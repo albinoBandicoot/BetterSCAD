@@ -1,0 +1,5 @@
+public enum Treetype {
+
+	ROOT, MODULE, FUNCTION, CALL, PARAMLIST, PARAM, BLOCK, IF, FOR, INTFOR, ASSIGN /* not the assign() {} block; that's a BLOCK */, OP, IDENT, VECTOR, INDEX, FLIT, SLIT, INCLUDE, USE, DISPMODE, CONDITION, RANGE, NOP;
+
+}
