@@ -21,44 +21,49 @@ public class Lexer {
 	private ArrayList<Integer> linebreaks;
 
 	public Lexer (File f) {
+		try {
+			setupLexer (new Scanner (f));
+		} catch (IOException e) {
+			error ("Could not open file for reading");
+		}
+	}
+
+	public Lexer (String s) {
+		setupLexer (new Scanner (s));
+	}
+
+	public void setupLexer (Scanner sc) {
 		linebreaks = new ArrayList<Integer>();
 		linebreaks.add(0);
 		StringBuilder sb = new StringBuilder ();
 		int cpos = 0;
-		try {
-			Scanner sc = new Scanner (f);
-			while (sc.hasNextLine()) {
-				String line = sc.nextLine();
-				int hashidx = line.indexOf ("//");
-				if (hashidx != -1) {
-					sb.append (line.substring (0, hashidx) + " ");
-					linebreaks.add (sb.length());
-				} else {
-					sb.append (line + " ");
-					linebreaks.add (sb.length());
-				}
+		while (sc.hasNextLine()) {
+			String line = sc.nextLine();
+			int hashidx = line.indexOf ("//");
+			if (hashidx != -1) {
+				sb.append (line.substring (0, hashidx) + " ");
+				linebreaks.add (sb.length());
+			} else {
+				sb.append (line + " ");
+				linebreaks.add (sb.length());
 			}
-			// now remove the block comments
-			int idx = sb.indexOf ("/*");
-			while (idx != -1) {
-				int endidx = sb.indexOf ("*/", idx);
-				collapseComment (idx, endidx+2);
-				sb.replace (idx, endidx+2, " ");
-				idx = sb.indexOf ("/*", idx);
-			}
-			s = sb.toString();
-			i = 0;
-			/*
-			System.out.println ("Line breaks!");
-			for (int i=0; i<linebreaks.size(); i++) {
-				System.out.println ("breaks[" + i + "] = " + linebreaks.get(i));
-			}
-			*/
-		} catch (IOException e) {
-			System.err.println ("IO Exception in the Lexer!");
-			e.printStackTrace ();
-			System.exit(1);
 		}
+		// now remove the block comments
+		int idx = sb.indexOf ("/*");
+		while (idx != -1) {
+			int endidx = sb.indexOf ("*/", idx);
+			collapseComment (idx, endidx+2);
+			sb.replace (idx, endidx+2, " ");
+			idx = sb.indexOf ("/*", idx);
+		}
+		s = sb.toString();
+		i = 0;
+		/*
+		   System.out.println ("Line breaks!");
+		   for (int i=0; i<linebreaks.size(); i++) {
+		   System.out.println ("breaks[" + i + "] = " + linebreaks.get(i));
+		   }
+		   */
 	}
 
 	private void collapseComment (int start, int end) {

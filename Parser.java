@@ -73,18 +73,19 @@ public class Parser {
 
 	public Tree parse () {	// top-level parsing routine
 		Tree root = new Tree (Treetype.ROOT);
+		root.st = new STSet (null);
 		while (peek().type != Tokentype.EOF) {
 			if (peek().is ("module")) {
-				root.children.add (parseModule());
+				root.addChild (parseModule());
 			} else if (peek().is ("function")) {
-				root.children.add (parseFunction ());
+				root.addChild (parseFunction ());
 			} else if (peek().is ("include")) {
 				File f = findSource (next().val);
 				if (f == null) {
 					nferror ("Could not load '" + peek().val + "'.");
 				} else {
 					Tree t = new Parser (f).parse();
-					root.children.addAll (t.children);
+					root.addChildAll (t.children);
 				}
 				next();
 			} else if (peek().is ("use")) {
@@ -96,31 +97,32 @@ public class Parser {
 					for (int q=0; q<subfile.children.size(); q++) {
 						Tree ch = (Tree) subfile.children.get(q);	// for some reason the compiler thinks that the contents of the children list are Objects, not Trees.
 						if (ch.type == Treetype.MODULE || ch.type == Treetype.FUNCTION) {
-							root.children.add (ch);
+							root.addChild (ch);
 						}
 					}
 				}
 				next();
 			} else {
-				root.children.add (parseStatement());
+				root.addChild (parseStatement());
 			}
 		}
 		return root;
 	}
 
-	public Tree<String> parseModule () {
+	public Tree parseModule () {
 		/* The tree's data is the name of the module.
 		 * Child 0 contains the parameter profile.
 		 * Child 1 contains the module body.
 		*/
-		Tree<String> res = new Tree<String> (Treetype.MODULE);
+		Tree res = new Tree (Treetype.MODULE);
+		res.createST ();	// the parameters are added in parseParam ()
 		if (peek().is("module")) {
 			next();
 			if (peek().type == Tokentype.IDENT) {
 				res.data = peek().val;
 				next();
 				if (peek().type == Tokentype.OPEN_PAREN) {
-					res.children.add (parseParamlist());
+					res.addChild (parseParamlist());
 				} else {
 					error ("Expecting open parenthesis in module declaration");
 				}
@@ -129,11 +131,11 @@ public class Parser {
 					// now for the body of the module
 					while (peek().type != Tokentype.CLOSE_BRACE) {
 						if (peek().is ("module")) {
-							res.children.add (parseModule());
+							res.addChild (parseModule());
 						} else if (peek().is ("function")) {
-							res.children.add (parseFunction());
+							res.addChild (parseFunction());
 						} else {
-							res.children.add (parseStatement());
+							res.addChild (parseStatement());
 						}
 					}
 					next();	// skip the close brace
@@ -146,28 +148,30 @@ public class Parser {
 		} else {
 			error ("Expecting module to start with 'module' keyword");
 		}
+		res.findPST().modules.put ((String) res.data, res);
 		return res;
 	}
 
-	public Tree<String> parseFunction () {
+	public Tree parseFunction () {
 		/* The tree's data is the name of the function. 
 		 * Child 0 is a tree that has the parameter profile.
 		 * Child 1 is the function body.
 		*/
-		Tree<String> res = new Tree<String>(Treetype.FUNCTION);
+		Tree res = new Tree(Treetype.FUNCTION);
+		res.createST();	// the addition of the parameters is taken care of in parseParam()
 		if (peek().is ("function")) {
 			next ();
 			if (peek().type == Tokentype.IDENT) {
 				res.data = peek().val;
 				next();
 				if (peek().type == Tokentype.OPEN_PAREN) {
-					res.children.add (parseParamlist());
+					res.addChild (parseParamlist());
 				} else {
 					error ("Expecting open parenthesis in function declaration");
 				}
 				if (peek().type == Tokentype.ASSIGN) {
 					next ();
-					res.children.add (parseExpr());
+					res.addChild (parseExpr());
 				} else {
 					error ("Expecting assignment after function prototype");
 				}
@@ -183,11 +187,20 @@ public class Parser {
 		return res;
 	}
 
-	public Tree<String> parseCall () {
-		Tree<String> res = new Tree<String> (Treetype.CALL);
+	public Tree parseCall () {
+		/* Function call trees have the following format:
+		 * Data: name of function
+		 * Child 0: PARAMLIST tree
+		 * Child 1: body
+		 *
+		 * The paramlist tree goes like this:
+		 * The children are either just expressions (for positional parameters), or are PARAM nodes, which have the var name as data and the expr as a child.
+		*/
+
+		Tree res = new Tree (Treetype.CALL);
 		if (peek().type == Tokentype.IDENT) {
 			res.data = peek().val;
-			if (Lexer.isBlock (res.data)) {
+			if (Lexer.isBlock ((String) res.data)) {
 				res.type = Treetype.BLOCK;
 			}
 			next();
@@ -196,7 +209,7 @@ public class Parser {
 			}
 			next();
 			Tree plist = new Tree (Treetype.PARAMLIST);
-			res.children.add (plist);
+			res.addChild (plist);
 
 			while (true) {
 				if (peek().type == Tokentype.COMMA) {
@@ -208,17 +221,17 @@ public class Parser {
 					if (peek().type == Tokentype.IDENT) {
 						String name = peek().val;
 						if (next().type == Tokentype.ASSIGN) {	// then we're assigning a named parameter.
-							Tree<String> param = new Tree<String> (Treetype.PARAM);
+							Tree param = new Tree (Treetype.PARAM);
 							param.data = name;
 							next();
-							param.children.add (parseExpr());
-							plist.children.add (param);
+							param.addChild (parseExpr());
+							plist.addChild (param);
 						} else {
 							prev();
-							plist.children.add (parseExpr());
+							plist.addChild (parseExpr());
 						}
 					} else {
-						plist.children.add (parseExpr());
+						plist.addChild (parseExpr());
 					}
 				}
 			}
@@ -239,7 +252,7 @@ public class Parser {
 					next();
 					break;
 				} else {
-					vec.children.add (parseExpr());
+					vec.addChild (parseExpr());
 				}
 			}
 			return vec;
@@ -260,7 +273,7 @@ public class Parser {
 					next();
 					break;
 				} else {
-					res.children.add (parseParam());
+					res.addChild (parseParam());
 				}
 			}
 		} else {
@@ -270,14 +283,15 @@ public class Parser {
 	}
 
 	public Tree parseParam () {
-		Tree<String> res = new Tree<String>(Treetype.PARAM);
+		Tree res = new Tree(Treetype.PARAM);
 		// data is the name; optionally has one child, the default value.
 		if (peek().type == Tokentype.IDENT) {
 			res.data = peek().val;
 			if (next().type == Tokentype.ASSIGN) {
 				next();
-				res.children.add (parseExpr());
+				res.addChild (parseExpr());
 			}
+			res.findPST().vars.put ((String) res.data, res.children.isEmpty() ? null : res.children.get(0));	// add to the symbol table
 		} else {
 			error ("Expecting identifier");
 		}
@@ -286,7 +300,7 @@ public class Parser {
 
 	public Tree parseCondition () {
 		Tree res = new Tree (Treetype.CONDITION);
-		res.children.add (parseExpr());
+		res.addChild (parseExpr());
 		System.out.println ("Condition is \n" + res);
 		System.out.println ("peek() is " + peek());
 		return res;
@@ -299,18 +313,18 @@ public class Parser {
 			 * a tree with type CONDITION. An else branch, if present, will have a CONDITION with no children. */
 			Tree res = new Tree (Treetype.IF);
 			next();
-			res.children.add (parseCondition());
+			res.addChild (parseCondition());
 			if (peek().type == Tokentype.OPEN_BRACE) {
 				next();
 				while (peek().type != Tokentype.CLOSE_BRACE) {
-					res.children.add (parseStatement());
+					res.addChild (parseStatement());
 				}
 				next();	// skip the close brace
 				while (peek().is ("else")) {
 					next();
 					if (peek().is ("if")) {	// this is an ELSE IF branch
 						next();
-						res.children.add (parseCondition());
+						res.addChild (parseCondition());
 						if (peek().type == Tokentype.OPEN_BRACE) {
 							next();
 						} else {
@@ -318,14 +332,14 @@ public class Parser {
 						}
 					} else if (peek().type == Tokentype.OPEN_BRACE) {	// this is the ELSE branch
 						next();
-						res.children.add (new Tree (Treetype.CONDITION));	// empty condition signifies start of else branch
+						res.addChild (new Tree (Treetype.CONDITION));	// empty condition signifies start of else branch
 						break;	// we must stop looping once we hit an else branch
 					} else {
 						error ("Expecting 'if' or '{' after 'else'");
 					}
 					// now we add the statements
 					while (peek().type != Tokentype.CLOSE_BRACE) {
-						res.children.add (parseStatement());
+						res.addChild (parseStatement());
 					}
 					next();
 				}
@@ -342,6 +356,7 @@ public class Parser {
 			 * Subsequent children: statements of the body
 			*/
 			Tree res = new Tree (peek().is("for") ? Treetype.FOR : Treetype.INTFOR);
+			res.createST();
 			next();
 			if (peek().type == Tokentype.OPEN_PAREN) {
 				next();
@@ -363,22 +378,22 @@ public class Parser {
 						 * child 2 : increment
 						*/
 						if (peek().type == Tokentype.COLON) {	// range
-							Tree<String> range = new Tree<String> (Treetype.RANGE);
+							Tree range = new Tree (Treetype.RANGE);
 							range.data = name;
-							range.children.add (expr1);
+							range.addChild (expr1);
 							next();
 							Tree expr2 = parseExpr();
 							if (peek().type == Tokentype.COLON) {	// then we have the 3-element form of RANGE.
 								next();
 								Tree expr3 = parseExpr();
-								range.children.add (expr3);
-								range.children.add (expr2);
+								range.addChild (expr3);
+								range.addChild (expr2);
 							} else {
-								range.children.add (expr2);
-								range.children.add (new Tree<Double> (Treetype.FLIT, 1.0));
+								range.addChild (expr2);
+								range.addChild (new Tree (Treetype.FLIT, 1.0));
 							}
 								
-							res.children.add (range);
+							res.addChild (range);
 							if (peek().type == Tokentype.CLOSE_BRACKET) {
 								next();
 							} else {
@@ -388,7 +403,7 @@ public class Parser {
 							i = savepoint;
 							Tree vec = parseVector();
 							vec.data = name;
-							res.children.add (vec);
+							res.addChild (vec);
 						}
 					} else {
 						error ("Expecting either range or vector as loop expression");
@@ -400,7 +415,7 @@ public class Parser {
 					if (peek().type == Tokentype.OPEN_BRACE) {
 						next();
 						while (peek().type != Tokentype.CLOSE_BRACE) {
-							res.children.add (parseStatement());
+							res.addChild (parseStatement());
 						}
 						next();
 					}
@@ -410,6 +425,15 @@ public class Parser {
 			} else {
 				error ("Loop expressions must be of the form <variable> = [start : end]  or  <variable> = <vector>");
 			}
+			res.st.vars.put ((String) res.data, res.children.get(0));	// for now; this may have to change.
+			/* One option to make for loops more uniform is to replace the vector form with an equivalent range form:
+			 *
+			 * for (x = [a_0, a_1, ... a_n]) {		can be replaced with
+			 *
+			 * for (__TEMP = [0:n]) {
+			 * 	assign (x = a[__TEMP]) {
+			*/ 
+
 			return res;
 		}
 
@@ -418,31 +442,33 @@ public class Parser {
 			return new Tree (Treetype.NOP);
 		}
 		if (peek().type == Tokentype.IDENT) {
-			if (next().type == Tokentype.ASSIGN) {
+			if (next().type == Tokentype.ASSIGN) {	// ASSIGN block - has its own symbol table
 				prev();
-				Tree<String> t = new Tree<String> (Treetype.ASSIGN);
+				Tree t = new Tree (Treetype.ASSIGN);
+				t.createST();
 				t.data = peek().val;
 				next();
 				next();
-				t.children.add (parseExpr());
+				t.addChild (parseExpr());
 				if (peek().type == Tokentype.SEMICOLON) {
 					next();
 				} else {
 					nferror ("Missing semicolon");
 				}
+				t.st.vars.put ((String) t.data, t.children.get(0));
 				return t;
 			} else {
 				prev();
 			}
 		}
-		Tree<Op> dmode = null;
+		Tree dmode = null;
 		if (peek().type == Tokentype.OP && Op.get(peek().val).isTreemod()) {	// for the things that change the display mode of a subtree
-			dmode = new Tree<Op> (Treetype.DISPMODE);
+			dmode = new Tree (Treetype.DISPMODE);
 			dmode.data = Op.get(peek().val);
 			next();
 		}
 		Tree call = parseCall();
-		if (dmode != null) call.children.add (dmode);
+		if (dmode != null) call.addChild (dmode);
 		if (peek().type == Tokentype.SEMICOLON) {
 			next();
 			return call;
@@ -450,11 +476,11 @@ public class Parser {
 			if (peek().type == Tokentype.OPEN_BRACE) {
 				next();
 				while (peek().type != Tokentype.CLOSE_BRACE) {
-					call.children.add (parseStatement());
+					call.addChild (parseStatement());
 				}
 				next();
 			} else {
-				call.children.add (parseStatement());
+				call.addChild (parseStatement());
 			}
 		}
 		return call;
@@ -465,29 +491,29 @@ public class Parser {
 	public Tree parseL1 () {	// unaries 
 		Tree root;
 		if (peek().isOp("!") || peek().isOp("-")) {
-			root = new Tree<Op> (Treetype.OP, peek().getOp());
+			root = new Tree (Treetype.OP, peek().getOp());
 			next();
 		} else {
 			return parseL0();
 		}
 		Tree parent = root;
 		while (peek().isOp ("!") || peek().isOp("-")) {
-			Tree res = new Tree<Op> (Treetype.OP, peek().getOp());
+			Tree res = new Tree (Treetype.OP, peek().getOp());
 			next();
-			parent.children.add (res);
+			parent.addChild (res);
 			parent = res;
 		}
-		parent.children.add (parseL0());
+		parent.addChild (parseL0());
 		return root;
 	}
 
 	public Tree parseL2 () {	// and
 		Tree ch = parseL1 ();
 		while (peek().isOp (Op.AND)) {
-			Tree and = new Tree<Op> (Treetype.OP, peek().getOp());
+			Tree and = new Tree (Treetype.OP, peek().getOp());
 			next ();
-			and.children.add (ch);
-			and.children.add (parseL1());
+			and.addChild (ch);
+			and.addChild (parseL1());
 			ch = and;
 		}
 		return ch;
@@ -497,10 +523,10 @@ public class Parser {
 		Tree ch = parseL2 ();
 		Token t = peek();
 		while (t.isOp (Op.OR)) {
-			Tree or = new Tree<Op> (Treetype.OP, t.getOp());
+			Tree or = new Tree (Treetype.OP, t.getOp());
 			next();
-			or.children.add (ch);
-			or.children.add (parseL2());
+			or.addChild (ch);
+			or.addChild (parseL2());
 			ch = or;
 		}
 		return ch;
@@ -509,10 +535,10 @@ public class Parser {
 	public Tree parseL4 () {	// relationals
 		Tree lhs = parseL3 ();
 		if (peek().getOp().isRelational()) {
-			Tree rel = new Tree<Op> (Treetype.OP, peek().getOp());
+			Tree rel = new Tree (Treetype.OP, peek().getOp());
 			next();
-			rel.children.add (lhs);
-			rel.children.add (parseL3());
+			rel.addChild (lhs);
+			rel.addChild (parseL3());
 			return rel;
 		} else {
 			return lhs;
@@ -522,10 +548,10 @@ public class Parser {
 	public Tree parseL5 () {	// multiply, divide, mod
 		Tree ch = parseL4 ();
 		while (peek().isOp ("*") || peek().isOp ("/") || peek().isOp ("%")) {
-			Tree<Op> parent = new Tree<Op> (Treetype.OP, peek().getOp());
+			Tree parent = new Tree (Treetype.OP, peek().getOp());
 			next();
-			parent.children.add (ch);
-			parent.children.add (parseL4());
+			parent.addChild (ch);
+			parent.addChild (parseL4());
 			ch = parent;
 		}
 		return ch;
@@ -534,10 +560,10 @@ public class Parser {
 	public Tree parseExpr () {	// add and subtract
 		Tree ch = parseL5 ();
 		while (peek().isOp ("+") || peek().isOp ("-")) {
-			Tree parent = new Tree<Op> (Treetype.OP, peek().getOp());
+			Tree parent = new Tree (Treetype.OP, peek().getOp());
 			next();
-			parent.children.add (ch);
-			parent.children.add (parseL5());
+			parent.addChild (ch);
+			parent.addChild (parseL5());
 			ch = parent;
 		}
 		return ch;
@@ -556,12 +582,12 @@ public class Parser {
 		} else if (peek().type == Tokentype.OPEN_BRACKET) {	// vector
 			return parseVector();
 		} else if (peek().type == Tokentype.SLIT) {	// string literal
-			Tree<String> res = new Tree<String>(Treetype.SLIT);
+			Tree res = new Tree(Treetype.SLIT);
 			res.data = peek().val;
 			next();
 			return res;
 		} else if (peek().type == Tokentype.FLIT) {	// float literal
-			Tree<Double> res = new Tree<Double> (Treetype.FLIT);
+			Tree res = new Tree (Treetype.FLIT);
 			res.data = peek().nval;
 			next();
 			return res;
@@ -574,7 +600,7 @@ public class Parser {
 				return parseCall ();
 			} else {
 				Tree top;
-				Tree<String> id = new Tree<String> (Treetype.IDENT);
+				Tree id = new Tree (Treetype.IDENT);
 				top = id;
 				id.data = prev().val;
 				next();
@@ -582,8 +608,8 @@ public class Parser {
 					next();
 					Tree ptop = top;
 					top = new Tree (Treetype.INDEX);
-					top.children.add (ptop);
-					top.children.add (parseExpr());
+					top.addChild (ptop);
+					top.addChild (parseExpr());
 					if (peek().type != Tokentype.CLOSE_BRACKET) {
 						error ("Expecting close bracket on vector index");
 					}
