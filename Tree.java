@@ -21,6 +21,14 @@ public class Tree {
 		parent = null;
 	}
 
+	public String name () {	// since the data is so often used to encode a name, why not have a convenience method for it?
+		if (data instanceof String) {
+			return (String) data;
+		} else {
+			return type.toString();	// next best thing, I guess. Could also return null, but this is probably better.
+		}
+	}
+
 	public void addChild (Tree t) {
 		children.add (t);
 		t.parent = this;
@@ -33,10 +41,15 @@ public class Tree {
 		}
 	}
 
-	public STSet findPST () {
+	public STSet findPST () {	// start searching with the parent to find a symbol table
 		if (parent == null) return null;
 		if (parent.st != null) return parent.st;
 		return parent.findPST();
+	}
+
+	public STSet findST () {	// start searching at the current node to find a symbol table
+		if (st != null) return st;
+		return findPST();
 	}
 	
 	public void createST () {
@@ -61,6 +74,9 @@ public class Tree {
 			} else {
 				sb.append (data);
 			}
+		}
+		if (st != null) {
+			sb.append ("   " + st);
 		}
 		sb.append ("\n");
 		for (Tree t : children) {

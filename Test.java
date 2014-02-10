@@ -7,6 +7,8 @@ public class Test {
 		File inp = new File (args[0]);
 		Tree t = new Parser (inp).parse();
 		System.out.println(t);
-		
+		Semantics.makeSymtables (t);
+		System.out.println(t);
+
 	}
 }

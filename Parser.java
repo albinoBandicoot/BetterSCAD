@@ -73,7 +73,6 @@ public class Parser {
 
 	public Tree parse () {	// top-level parsing routine
 		Tree root = new Tree (Treetype.ROOT);
-		root.st = new STSet (null);
 		while (peek().type != Tokentype.EOF) {
 			if (peek().is ("module")) {
 				root.addChild (parseModule());
@@ -103,7 +102,7 @@ public class Parser {
 				}
 				next();
 			} else {
-				root.addChild (parseStatement());
+				root.addChild (parseStatement(root));
 			}
 		}
 		return root;
@@ -115,7 +114,6 @@ public class Parser {
 		 * Child 1 contains the module body.
 		*/
 		Tree res = new Tree (Treetype.MODULE);
-		res.createST ();	// the parameters are added in parseParam ()
 		if (peek().is("module")) {
 			next();
 			if (peek().type == Tokentype.IDENT) {
@@ -135,7 +133,7 @@ public class Parser {
 						} else if (peek().is ("function")) {
 							res.addChild (parseFunction());
 						} else {
-							res.addChild (parseStatement());
+							res.addChild (parseStatement(res));
 						}
 					}
 					next();	// skip the close brace
@@ -148,7 +146,6 @@ public class Parser {
 		} else {
 			error ("Expecting module to start with 'module' keyword");
 		}
-		res.findPST().modules.put ((String) res.data, res);
 		return res;
 	}
 
@@ -158,7 +155,6 @@ public class Parser {
 		 * Child 1 is the function body.
 		*/
 		Tree res = new Tree(Treetype.FUNCTION);
-		res.createST();	// the addition of the parameters is taken care of in parseParam()
 		if (peek().is ("function")) {
 			next ();
 			if (peek().type == Tokentype.IDENT) {
@@ -187,7 +183,7 @@ public class Parser {
 		return res;
 	}
 
-	public Tree parseCall () {
+	public Tree parseCall (Treetype calltype) {
 		/* Function call trees have the following format:
 		 * Data: name of function
 		 * Child 0: PARAMLIST tree
@@ -197,12 +193,9 @@ public class Parser {
 		 * The children are either just expressions (for positional parameters), or are PARAM nodes, which have the var name as data and the expr as a child.
 		*/
 
-		Tree res = new Tree (Treetype.CALL);
+		Tree res = new Tree (calltype);
 		if (peek().type == Tokentype.IDENT) {
 			res.data = peek().val;
-			if (Lexer.isBlock ((String) res.data)) {
-				res.type = Treetype.BLOCK;
-			}
 			next();
 			if (peek().type != Tokentype.OPEN_PAREN) {
 				error ("Expecting open parenthesis after identifier");
@@ -291,7 +284,6 @@ public class Parser {
 				next();
 				res.addChild (parseExpr());
 			}
-			res.findPST().vars.put ((String) res.data, res.children.isEmpty() ? null : res.children.get(0));	// add to the symbol table
 		} else {
 			error ("Expecting identifier");
 		}
@@ -306,7 +298,7 @@ public class Parser {
 		return res;
 	}
 
-	public Tree parseStatement () {
+	public Tree parseStatement (Tree parent) {	// we need the parent pointer to access the symbol tables
 		System.out.println ("In parseStatement, the leading token is " + peek());
 		if (peek().is ("if")) {
 			/* To disambiguate which children are conditions and which are statements, the conditions are wrapped in 
@@ -317,7 +309,7 @@ public class Parser {
 			if (peek().type == Tokentype.OPEN_BRACE) {
 				next();
 				while (peek().type != Tokentype.CLOSE_BRACE) {
-					res.addChild (parseStatement());
+					res.addChild (parseStatement(res));
 				}
 				next();	// skip the close brace
 				while (peek().is ("else")) {
@@ -339,7 +331,7 @@ public class Parser {
 					}
 					// now we add the statements
 					while (peek().type != Tokentype.CLOSE_BRACE) {
-						res.addChild (parseStatement());
+						res.addChild (parseStatement(res));
 					}
 					next();
 				}
@@ -356,7 +348,6 @@ public class Parser {
 			 * Subsequent children: statements of the body
 			*/
 			Tree res = new Tree (peek().is("for") ? Treetype.FOR : Treetype.INTFOR);
-			res.createST();
 			next();
 			if (peek().type == Tokentype.OPEN_PAREN) {
 				next();
@@ -415,7 +406,7 @@ public class Parser {
 					if (peek().type == Tokentype.OPEN_BRACE) {
 						next();
 						while (peek().type != Tokentype.CLOSE_BRACE) {
-							res.addChild (parseStatement());
+							res.addChild (parseStatement(res));
 						}
 						next();
 					}
@@ -425,7 +416,6 @@ public class Parser {
 			} else {
 				error ("Loop expressions must be of the form <variable> = [start : end]  or  <variable> = <vector>");
 			}
-			res.st.vars.put ((String) res.data, res.children.get(0));	// for now; this may have to change.
 			/* One option to make for loops more uniform is to replace the vector form with an equivalent range form:
 			 *
 			 * for (x = [a_0, a_1, ... a_n]) {		can be replaced with
@@ -442,10 +432,9 @@ public class Parser {
 			return new Tree (Treetype.NOP);
 		}
 		if (peek().type == Tokentype.IDENT) {
-			if (next().type == Tokentype.ASSIGN) {	// ASSIGN block - has its own symbol table
+			if (next().type == Tokentype.ASSIGN) {	// NOT the ASSIGN block - just a regular variable assignment. 
 				prev();
 				Tree t = new Tree (Treetype.ASSIGN);
-				t.createST();
 				t.data = peek().val;
 				next();
 				next();
@@ -455,7 +444,6 @@ public class Parser {
 				} else {
 					nferror ("Missing semicolon");
 				}
-				t.st.vars.put ((String) t.data, t.children.get(0));
 				return t;
 			} else {
 				prev();
@@ -467,7 +455,7 @@ public class Parser {
 			dmode.data = Op.get(peek().val);
 			next();
 		}
-		Tree call = parseCall();
+		Tree call = parseCall(Treetype.MCALL);	// these are always going to be MODULE calls
 		if (dmode != null) call.addChild (dmode);
 		if (peek().type == Tokentype.SEMICOLON) {
 			next();
@@ -476,11 +464,11 @@ public class Parser {
 			if (peek().type == Tokentype.OPEN_BRACE) {
 				next();
 				while (peek().type != Tokentype.CLOSE_BRACE) {
-					call.addChild (parseStatement());
+					call.addChild (parseStatement(call));
 				}
 				next();
 			} else {
-				call.addChild (parseStatement());
+				call.addChild (parseStatement(call));
 			}
 		}
 		return call;
@@ -592,12 +580,12 @@ public class Parser {
 			next();
 			return res;
 		} else if (peek().type == Tokentype.IDENT) {
-			// now it could either be a function/module call or a variable reference (possibly with vector indexing).
+			// now it could either be a function call or a variable reference (possibly with vector indexing).
 			// We must look at the following token: if OPEN_PAREN, then it's a function call.
 			Token n = next();
 			if (n.type == Tokentype.OPEN_PAREN) {
 				prev();
-				return parseCall ();
+				return parseCall (Treetype.FCALL);
 			} else {
 				Tree top;
 				Tree id = new Tree (Treetype.IDENT);
