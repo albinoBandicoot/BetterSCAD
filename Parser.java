@@ -1,6 +1,6 @@
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.io.File;
+import java.io.*;
 public class Parser {
 
 	private ArrayList<Token> tokens;
@@ -8,7 +8,14 @@ public class Parser {
 	private File sourcefile;
 	private File sourcedir;
 
+	private static ArrayList<String> includes = new ArrayList<String>();
+
+	public static void reset () {
+		includes.clear();
+	}
+
 	public Parser (File f) {
+		includes.add (f.getAbsolutePath());
 		Lexer lex = new Lexer (f);
 		tokens = lex.tokenize();
 		tokens.add (new Token (Tokentype.EOF, -1));
@@ -82,6 +89,8 @@ public class Parser {
 				File f = findSource (next().val);
 				if (f == null) {
 					nferror ("Could not load '" + peek().val + "'.");
+				} else if (includes.contains(f.getAbsolutePath())) {
+					nferror ("Include cycle detected with file " + peek().val);
 				} else {
 					Tree t = new Parser (f).parse();
 					root.addChildAll (t.children);
@@ -91,6 +100,8 @@ public class Parser {
 				File f = findSource (next().val);
 				if (f == null) {
 					nferror ("Could not load '" + peek().val + "'.");
+				} else if (includes.contains(f.getAbsolutePath())) {
+					nferror ("Include cycle detected with file " + peek().val);
 				} else {
 					Tree subfile = new Parser(f).parse();
 					for (int q=0; q<subfile.children.size(); q++) {
@@ -605,8 +616,9 @@ public class Parser {
 				}
 				return top;
 			}
+		} else {
+			error ("Invalid token " + peek() + " in parseL0");
 		}
-		error ("You should not be at the bottom of parseL0!");
 		return null;
 	}
 }
