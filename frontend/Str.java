@@ -1,3 +1,5 @@
+package frontend;
+
 public class Str extends Datum {
 
 	public String data;

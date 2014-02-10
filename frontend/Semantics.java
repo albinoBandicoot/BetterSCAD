@@ -1,3 +1,5 @@
+package frontend;
+
 public class Semantics {
 
 	public static void error (String message) {
@@ -40,6 +42,11 @@ public class Semantics {
 		}
 		if (t.type == Treetype.MODULE || t.type == Treetype.FUNCTION) {
 			t.createST();
+			if (t.type == Treetype.MODULE) {
+				t.findPST().modules.put (t.name(), t);
+			} else {
+				t.findPST().functions.put (t.name(), t);
+			}
 			// add the parameters. It's actually easier to allow parameters to refer to previous ones than to forbid it, so I'll keep that functionality even though OpenSCAD doesn't implement it (it would actually be really useful. After all, this is BetterSCAD).
 			Tree plist = t.children.get(0);
 			for (Tree p : plist.children) {

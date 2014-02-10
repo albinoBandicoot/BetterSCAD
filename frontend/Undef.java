@@ -1,3 +1,5 @@
+package frontend;
+
 public class Undef extends Datum {
 
 	public Undef () {

@@ -1,3 +1,5 @@
+package frontend;
+
 public class Scalar extends Datum {
 
 	public double d;

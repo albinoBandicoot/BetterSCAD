@@ -1,3 +1,5 @@
+package frontend;
+
 public class STE {
 
 	public Tree t;
@@ -5,7 +7,7 @@ public class STE {
 
 	public STE (Tree t) {
 		this.t = t;
-		d = new Undef ();
+		d = null;
 	}
 
 	public STE (Tree t, Datum d) {

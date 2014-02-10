@@ -1,17 +1,20 @@
-Welcome to BetterSCAD, a meshless reimplementation of OpenSCAD with an integrated
-sclicer. While the name is a bit presumptuous, the idea is that most of the things
-that make OpenSCAD crappy stem from its reliance on meshes, which are not a very
-natural representation of CSG objects. BetterSCAD never converts them to meshes:
-it renders and slices them directly from their CSG representation.
+Welcome to BetterSCAD, a meshless reimplementation of OpenSCAD with
+an integrated sclicer. While the name is a bit presumptuous, the idea
+is that most of the things that make OpenSCAD crappy stem from its
+reliance on meshes, which are not a very natural representation of CSG
+objects. BetterSCAD never converts them to meshes: it renders and slices
+them directly from their CSG representation.
 
-OpenSCAD (in the F6 mode) spends almost all of its time doing the CSG operations 
-on large meshes - the actual rendering time once the mesh is created is fast 
-(it is done on the GPU, and the GPU is very good at rendering large meshes).
+OpenSCAD (in the F6 mode) spends almost all of its time doing the CSG
+operations on large meshes - the actual rendering time once the mesh
+is created is fast (it is done on the GPU, and the GPU is very good at
+rendering large meshes).
 
-I plan to use raytracing (on the CPU) to render the model wihtout converting it
-to a mesh. While it may be hard to achieve interactive framerates, it should
-scale to larger models much better than OpenSCAD's current implementation.
+I plan to use raytracing (on the CPU) to render the model wihtout
+converting it to a mesh. While it may be hard to achieve interactive
+framerates, it should scale to larger models much better than OpenSCAD's
+current implementation.
 
-Unfortunately, the popular slicers work on meshes, so as part of this projcet a
-slicer will need to be implemented that works directly on the CSG objects. This
-is an area with which I am less familiar.
+Unfortunately, the popular slicers work on meshes, so as part of this
+projcet a slicer will need to be implemented that works directly on the
+CSG objects. This is an area with which I am less familiar.

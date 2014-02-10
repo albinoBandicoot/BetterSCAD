@@ -1,3 +1,5 @@
+package frontend;
+
 public class Token {
 
 	public Tokentype type;
