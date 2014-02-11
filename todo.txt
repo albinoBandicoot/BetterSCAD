@@ -1,0 +1,19 @@
+- implement the shorthand syntax for nested for loops
+- implement the runtimes/interpreter
+
+- internals:
+	- matrix inversion
+	- transform points and vecs
+	- normalize the tree
+	- implement extrusion int test
+	- implement revolves
+		- how? by knowing the forms of all primitives? or some other way?
+			- do we need to figure out ray-ellipsoidal-torus intersection?
+		
+	- implement polygon
+
+- rendering engine
+- GUI
+	- editor
+- slicer
+
