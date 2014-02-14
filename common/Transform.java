@@ -1,8 +1,12 @@
 package common ;
 public class Transform {
 
-	public Float3 transformPoint (Float3 pt) ;
-	public Float3 transformVec   (Float3 vec);
+	public Float3 transformPoint (Float3 pt) {
+		return null;
+	}
+	public Float3 transformVec   (Float3 vec) {
+		return null;
+	}
 
 	private double[][] mat;
 
@@ -65,7 +69,7 @@ public class Transform {
 		for (int i=0; i<4; i++) {
 			for (int j=0; j<4; j++) {
 				for (int k=0; k<4; k++) {
-					m[i][j] += this.m[i][k] * other.m[k][j];
+					m[i][j] += this.mat[i][k] * other.mat[k][j];
 				}
 			}
 		}

@@ -11,16 +11,16 @@ public class STSet {
 	
 	public Symtable modules, functions, vars;
 	public STSet parent;
+	public Tree tree;	// the tree with which this STSet is associated.
 	public int id;
 
 	public void resetID () {	// only use when restarting the compilation process.
 		NUM = 0;
 	}
 
-	public STSet (STSet parent) {
-		System.err.println ("Creating a new STSet. Called from: ");
-		Thread.currentThread().dumpStack();
+	public STSet (STSet parent, Tree t) {
 		this.parent = parent;
+		this.tree = t;
 		modules = new Symtable();
 		functions = new Symtable ();
 		vars = new Symtable();
@@ -126,7 +126,5 @@ public class STSet {
 			sb.append (">");
 			return sb.toString();
 		}
-
-
 	}
 }

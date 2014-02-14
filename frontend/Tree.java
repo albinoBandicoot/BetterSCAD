@@ -55,7 +55,7 @@ public class Tree {
 	}
 	
 	public void createST () {
-		st = new STSet (findPST());
+		st = new STSet (findPST(), this);
 	}
 
 	public String toString () {

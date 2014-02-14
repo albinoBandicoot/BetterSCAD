@@ -1,4 +1,5 @@
 package common;
+import java.util.ArrayList;
 
 public abstract class Node {
 
@@ -18,6 +19,7 @@ public abstract class Node {
 	public Float3 intersection (Ray r) {
 		ArrayList<Double> ipts = allIntersections (r);
 		// get closest and return it.
+		return null;
 	}
 
 	public abstract ArrayList<Double> allIntersections (Ray r);

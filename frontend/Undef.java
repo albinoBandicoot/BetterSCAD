@@ -9,6 +9,10 @@ public class Undef extends Datum {
 		return this;
 	}
 
+	public boolean isTrue () {
+		return false;
+	}
+
 	public String toString () {
 		return "undef";
 	}

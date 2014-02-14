@@ -17,6 +17,10 @@ public class Vector extends Datum {
 		return vals.get(i);
 	}
 
+	public boolean isTrue () {
+		return !vals.isEmpty();	// this is how OpenSCAD seems to interpret it
+	}
+
 	public String toString () {
 		StringBuilder sb = new StringBuilder ();
 		sb.append ("[");

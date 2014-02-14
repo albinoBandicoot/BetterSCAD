@@ -17,6 +17,10 @@ public class Scalar extends Datum {
 		return new Undef();
 	}
 
+	public boolean isTrue () {
+		return d != 0.0;
+	}
+
 	public String toString () {
 		return Float.toString ((float) d);
 	}

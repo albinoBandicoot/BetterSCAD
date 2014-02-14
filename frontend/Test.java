@@ -10,7 +10,9 @@ public class Test {
 		Tree t = new Parser (inp).parse();
 		System.out.println(t);
 		Semantics.makeSymtables (t);
+		System.out.println ("Semantics has finished");
 		System.out.println(t);
+		System.out.println ("We're done; goodbye.");
 
 	}
 }

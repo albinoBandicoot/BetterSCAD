@@ -313,23 +313,29 @@ public class Parser {
 
 	public Tree parseStatement (Tree parent) {	// we need the parent pointer to access the symbol tables
 		System.out.println ("In parseStatement, the leading token is " + peek());
-		if (peek().is ("if")) {
-			/* To disambiguate which children are conditions and which are statements, the conditions are wrapped in 
-			 * a tree with type CONDITION. An else branch, if present, will have a CONDITION with no children. */
+		if (peek().is ("module")) {
+			return parseModule();
+		} else if (peek().is("function")) {
+			return parseFunction();
+		} else if (peek().is ("if")) {
+			/* An if statement's children must all be CONDITION nodes. A CONDITION tree will have as its first 
+			 * child the condition, and subsequent children are the body. Else branches get null first children. */
 			Tree res = new Tree (Treetype.IF);
 			next();
-			res.addChild (parseCondition());
+			Tree cond = parseCondition();
+			res.addChild (cond);
 			if (peek().type == Tokentype.OPEN_BRACE) {
 				next();
 				while (peek().type != Tokentype.CLOSE_BRACE) {
-					res.addChild (parseStatement(res));
+					cond.addChild (parseStatement(res));
 				}
 				next();	// skip the close brace
 				while (peek().is ("else")) {
 					next();
 					if (peek().is ("if")) {	// this is an ELSE IF branch
 						next();
-						res.addChild (parseCondition());
+						cond = parseCondition();
+						res.addChild (cond);
 						if (peek().type == Tokentype.OPEN_BRACE) {
 							next();
 						} else {
@@ -337,14 +343,16 @@ public class Parser {
 						}
 					} else if (peek().type == Tokentype.OPEN_BRACE) {	// this is the ELSE branch
 						next();
-						res.addChild (new Tree (Treetype.CONDITION));	// empty condition signifies start of else branch
+						cond = new Tree (Treetype.CONDITION);
+						cond.addChild (null);
+						res.addChild (cond);	
 						break;	// we must stop looping once we hit an else branch
 					} else {
 						error ("Expecting 'if' or '{' after 'else'");
 					}
 					// now we add the statements
 					while (peek().type != Tokentype.CLOSE_BRACE) {
-						res.addChild (parseStatement(res));
+						cond.addChild (parseStatement(res));
 					}
 					next();
 				}

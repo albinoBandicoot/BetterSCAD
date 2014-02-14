@@ -13,12 +13,13 @@ public class Semantics {
 
 	public static void makeSymtables (Tree root) {
 		root.createST();
-		STSet runtimes = new STSet (null);
+		STSet runtimes = new STSet (null, null);
 		root.st.parent = runtimes;
 		// now add all of the predefined modules and functions
 		String[] modules = {"union", "intersection", "difference", "assign", "square", "circle", "polygon", "cube", "cylinder", "sphere", "linear_extrude", "rotate_extrude", "translate", "scale", "rotate", "mirror", "multmatrix", "color"};
 		String[] functions = {"abs", "cos", "sin", "tan", "atan", "asin", "acos", "atan2", "pow", "len", "min", "max", "sqrt", "round", "ceil", "floor", "str", "echo", "children"};
 
+		// FIXME: We need to actually add trees here with the parameter profiles instead of just using null.
 		for (String m : modules) {
 			runtimes.modules.put (m, null);
 		}
@@ -33,9 +34,11 @@ public class Semantics {
 		runtimes.vars.put ("undef", null);
 
 		fillST (root);
+		System.err.println ("Symbol tables complete");
 	}
 
 	private static void fillST (Tree t) {
+		System.out.println ("Will fill symbol table for tree of type " + t.type);
 		if (t.type == Treetype.ASSIGN) {
 			t.findPST().vars.put (t.name(), t.children.get(0));
 			return;
@@ -63,19 +66,36 @@ public class Semantics {
 			t.st.vars.put (t.children.get(0).name(), t.children.get(0));	// I guess. We might change this later.
 			fillST (t.children.get(1));
 		} else if (t.type == Treetype.IF) {
+			for (Tree cond : t.children) {
+				cond.createST();
+				for (int i=1; i<cond.children.size(); i++) {
+					fillST (cond.children.get(i));
+				}
+			}
+
+			/*
 			int i = 0;
 			while (i < t.children.size()) {
 				Tree ch = t.children.get(i);
 				if (ch.type == Treetype.CONDITION) {
 					ch.createST();
 					Tree statement;
-					while (i < t.children.size() && (statement = t.children.get(++i)).type != Treetype.CONDITION) {
-						fillST (statement);
+					i++;
+					while (i < t.children.size()) {
+						statement = t.children.get(i);
+						if (statement.type == Treetype.CONDITION) {
+							break;
+						} else {
+							fillST (statement);
+						}
+						i++;
 					}
 				}
 			}
+			*/
 		} else if (t.type == Treetype.MCALL) {
 			t.createST();	// for locals
+			System.err.println ("Filling MCALL with name " + t.name());
 			if (t.name().equals("assign")) {	// then we pre-populate the ST with all of the assignments given in the block header.
 				Tree plist = t.children.get(0);
 				for (Tree p : plist.children) {
