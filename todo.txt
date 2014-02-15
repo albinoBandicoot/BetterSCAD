@@ -11,6 +11,19 @@
 			- do we need to figure out ray-ellipsoidal-torus intersection?
 		
 	- implement polygon
+	- figure out where to put transformations 
+		- one matrix per node; always transform, unused => identity matrix?
+		- special transformation nodes
+	- how do bounding boxes work with the transformations?
+	- some tree manipulation is needed:
+		- move CSG ops of 2D objects outside their 3D generators
+		- what about transforms? These get interesting. 
+			- revolves have to keep their internal transforms
+			- extrudes can have scales and translates factored out, but rotates...
+				- do we actually support the projection behavior of rotates inside extrudes?
+	- don't forget about rendering modifiers (*#!%) 
+	- getting normals to all objects
+		- is it better to compute for all intersections, or recompute for the final one?
 
 - rendering engine
 - GUI

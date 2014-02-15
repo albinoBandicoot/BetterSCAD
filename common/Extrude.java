@@ -1,4 +1,5 @@
 package common ;
+import java.util.ArrayList;
 public class  Extrude extends Node {
 
 	public double h;
@@ -12,8 +13,7 @@ public class  Extrude extends Node {
 	 * permits this), and 3D generative operations work on their projection into the xy-plane. I am actually 
 	 * very tempted not to allow this behavior. */
 
-	public double csg (Float3 p) {
-		Float3 pt = xform == null ? p : xform.transformPoint (p);
+	public double csg (Float3 pt) {
 		double r = left.csg (pt);
 		double z = 0;
 		if (pt.z < 0) {
@@ -24,7 +24,7 @@ public class  Extrude extends Node {
 		return Math.max (z, r);
 	}
 
-	public double intersection (Ray r) {
+	public Intersection intersection (Ray r) {
 		/* First find the intersection points (t-coords) with the infinite cylinder. (this can
 		 * be done by doing the intersection test in the xy plane on the 2D child object). Then determine
 		 * whether these are in the allowed Z coordinate range for the cylinder [0..h]. 
@@ -34,9 +34,10 @@ public class  Extrude extends Node {
 		 *
 		 * Take all of these intersections and return the closest one.
 		 */
+		return Intersection.NONE;
 	}
 
-	public ArrayList<Double> allIntersections (Ray r) {
+	public ArrayList<Intersection> allIntersections (Ray r) {
 		return null;
 	}
 

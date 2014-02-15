@@ -1,4 +1,5 @@
 package common ;
+import java.util.ArrayList;
 public class  CSG extends Node {
 
 	public static final int UNION = 0;
@@ -29,8 +30,7 @@ public class  CSG extends Node {
 		}
 	}
 
-	public double csg (Float3 p) {
-		Float3 pt = xform == null ? p : xform.transformPoint (p);
+	public double csg (Float3 pt) {
 		switch (type) {
 			case UNION:
 				return Math.min (left.csg(pt), right.csg(pt));
@@ -42,19 +42,20 @@ public class  CSG extends Node {
 		return 1;
 	}
 
-	public ArrayList<Double> allIntersections (Ray r) {
-		ArrayList<Double> left_inter = left.allIntersections(r);
-		ArrayList<Double> right_inter = right.allIntersections(r);
-		ArrayList<Double> res = new ArrayList<Double>();
-		for (double t : left_inter) {
-			if (onSurface (r.get(t))) {
-				res.add (t);
+	public ArrayList<Intersection> allIntersections (Ray r) {
+		ArrayList<Intersection> left_inter = left.allIntersections(r);
+		ArrayList<Intersection> right_inter = right.allIntersections(r);
+		ArrayList<Intersection> res = new ArrayList<Intersection>();
+		for (Intersection i : left_inter) {
+			if (onSurface (r.get(i.t))) {
+				res.add (i);
 			}
 		}
-		for (double t : right_inter) {
-			if (onSurface (r.get(t))) {
-				res.add (t);
+		for (Intersection i : right_inter) {
+			if (onSurface (r.get(i.t))) {
+				res.add (i);
 			}
 		}
+		return res;
 	}
 }

@@ -1,12 +1,12 @@
 #!/bin/sh
 
-rm `find ./ -name "*.class"`
+rm `find ./ -name "*.class"` 2>/dev/null
 
 if [ $# -ge 1 ]
 then
 	if [ $1 = "-c" ]
 	then
-		return 0
+		exit 0
 	fi
 fi
 

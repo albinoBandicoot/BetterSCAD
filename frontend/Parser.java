@@ -616,7 +616,7 @@ public class Parser {
 				while (peek().type == Tokentype.OPEN_BRACKET) {
 					next();
 					Tree ptop = top;
-					top = new Tree (Treetype.INDEX);
+					top = new Tree (Treetype.OP, Op.INDEX);
 					top.addChild (ptop);
 					top.addChild (parseExpr());
 					if (peek().type != Tokentype.CLOSE_BRACKET) {

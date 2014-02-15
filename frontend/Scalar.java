@@ -12,6 +12,10 @@ public class Scalar extends Datum {
 		d = x;
 	}
 
+	public int size () {
+		return 1;
+	}
+
 	public Datum get (int idx) {
 		if (idx == 0)  return this;
 		return new Undef();

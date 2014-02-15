@@ -5,6 +5,10 @@ public class Undef extends Datum {
 	public Undef () {
 	}
 
+	public int size () {
+		return 0;
+	}
+
 	public Datum get (int i) {
 		return this;
 	}

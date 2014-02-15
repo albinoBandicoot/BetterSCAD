@@ -1,17 +1,17 @@
 package common ;
-public class  Circle {
+import java.util.ArrayList;
+public class  Circle extends Node {
 
 	/* Unit circle on the xy-plane */
 
 	public Circle () {
 	}
 
-	public double csg (Float3 p) {
-		Float3 pt = xform == null ? p : xform.transformPoint (p);
+	public double csg (Float3 pt) {
 		return Math.max (pt.z, Math.sqrt(pt.x*pt.x + pt.y*pt.y) - 1);
 	}
 
-	public double intersection (Ray r) {
+	public Intersection intersection (Ray r) {
 		/* Basically the same as the sphere code, but setting the z components to 0. Unfortunately,
 		 * this may cause a 0-length direction vector, which has to be special-cased. */
 		Float3 omc = r.start;
@@ -20,35 +20,35 @@ public class  Circle {
 		dir.z = 0;
 		if (dir.mag() < 1e-6) {
 			if (Math.abs(csg (omc)) < 1e-6) {	// the ray pierces the edge of the circle from directly above
-				return 0;
+				return new Intersection (0, this);
 			}
-			return -1;
+			return Intersection.NONE;
 		}
 		double b = dir.dot (omc);
 		double c = omc.dot(omc) - 1;
 		if (b*b - c < 0) {
-			return -1;
+			return Intersection.NONE;
 		}
 		double d = Math.sqrt (b*b-c);
 		double t0 = -b + d;
 		double t1 = -b - d;
 		if (t1 > 0) {
-			return t1;
+			return new Intersection (t1, this);
 		} else if (t0 > 0) {
-			return t0;
+			return new Intersection (t0, this);
 		}
 		return null;
 	}
 
-	public ArrayList<Double> allIntersections (Ray r) {
-		ArrayList<Double> ipts = new ArrayList<Double>();
+	public ArrayList<Intersection> allIntersections (Ray r) {
+		ArrayList<Intersection> ipts = new ArrayList<Intersection>();
 		Float3 omc = r.start;
 		Float3 dir = r.dir;
 		omc.z = 0;
 		dir.z = 0;
 		if (dir.mag() < 1e-6) {
 			if (Math.abs(csg (omc)) < 1e-6) {	// the ray pierces the edge of the circle from directly above
-				ipts.add (0);
+				ipts.add (new Intersection(0,this));
 			}
 			return ipts;
 		}
@@ -61,13 +61,12 @@ public class  Circle {
 		double t0 = -b + d;
 		double t1 = -b - d;
 		if (t1 > 0) {
-			ipts.add (t1);
+			ipts.add (new Intersection (t1, this));
 		}
 		if (t0 > 0) {
-			ipts.add (t0);
+			ipts.add (new Intersection (t0, this));
 		}
 		return ipts;
 	}
 
-}
 }

@@ -17,11 +17,12 @@ public class Semantics {
 		root.st.parent = runtimes;
 		// now add all of the predefined modules and functions
 		String[] modules = {"union", "intersection", "difference", "assign", "square", "circle", "polygon", "cube", "cylinder", "sphere", "linear_extrude", "rotate_extrude", "translate", "scale", "rotate", "mirror", "multmatrix", "color"};
-		String[] functions = {"abs", "cos", "sin", "tan", "atan", "asin", "acos", "atan2", "pow", "len", "min", "max", "sqrt", "round", "ceil", "floor", "str", "echo", "children"};
+		String[][] mparam = {{}, {}, {}, {}, {"size", "center"}, {"r", "center"}, {"points", "paths", "convexity"}, {"size", "center"}, {"r", "center"}, {"height", "center", "convexity", "twist", "slices", "scale"}, {"convexity"}, {"v"}, {"v"}, {"a", "v"}, {"v"}, {"m"}, {"c", "alpha"}};
+		Datum[][] mdefaults = {{}, {}, {}, {}, {new Scalar(1), new Scalar (0)}, {new Scalar(1), new Scalar(0)}, {new Undef(), new Undef(), new Scalar(5)}, {new Scalar(1), new Scalar(0)}, {new Scalar(1), new Scalar(0)}, {new Scalar(1), new Scalar(0), new Scalar(5), new Scalar(0), new Undef(), new Scalar(1)}, {new Scalar(5)}, {new Vec(0,0,0)}, {new Vec(1,1,1)}, {new Vec(0,0,0), new Undef()}, {new Vec(1,0,0)}, {new Vec(new Vec(1,0,0), new Vec(0,1,0), new Vec(0,0,1))}, {new Vec(0.8, 0.8, 0), new Scalar(1)}};
+		String[] functions = {"cos", "sin", "tan", "acos", "asin", "atan", "atan2", "abs", "ceil", "exp", "floor", "ln", "len", "log", "lookup", "max", "min", "norm", "pow", "rands", "round", "sign", "sqrt", "str"};
 
-		// FIXME: We need to actually add trees here with the parameter profiles instead of just using null.
-		for (String m : modules) {
-			runtimes.modules.put (m, null);
+		for (int i=0; i<modules.length; i++) {
+			runtimes.modules.put (modules[i], createPListTree (mparam[i], mdefaults[i]));
 		}
 
 		for (String f : functions) {
@@ -36,6 +37,41 @@ public class Semantics {
 		fillST (root);
 		System.err.println ("Symbol tables complete");
 	}
+
+	private static Tree createPListTree (String[] pnames, Datum[] defs) {
+		Tree plist = new Tree (Treetype.PARAMLIST);
+		for (int i=0; i<pnames.length; i++) {
+			Tree p = new Tree (Treetype.PARAM, pnames[i]);
+			if (defs[i] == null || defs[i] instanceof Undef) {
+				plist.children.add (new Tree (Treetype.PARAM, pnames[i]));
+			} else {
+				p.children.add (getTreeFromDatum (defs[i]));
+			}
+			plist.children.add (p);
+		}
+		return plist;
+	}
+
+	private static Tree getTreeFromDatum (Datum d) {
+		if (d instanceof Scalar) {
+			return new Tree (Treetype.FLIT, ((Scalar) d).d);
+		} else if (d instanceof Vec) {
+			Tree v = new Tree (Treetype.VECTOR);
+			for (Datum elem : ((Vec) d).vals) {
+				v.children.add (getTreeFromDatum (elem));
+			}
+			return v;
+		} else if (d instanceof Undef) {
+			return null;
+		} else if (d instanceof Str) {
+			return new Tree (Treetype.SLIT, ((Str) d).data);
+		} else if (d instanceof Bool) {
+			// TODO: I guess we need boolean trees also.
+		}
+		return null;
+	}
+
+
 
 	private static void fillST (Tree t) {
 		System.out.println ("Will fill symbol table for tree of type " + t.type);

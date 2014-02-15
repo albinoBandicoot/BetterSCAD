@@ -8,6 +8,10 @@ public class Transform {
 		return null;
 	}
 
+	public Ray transformRay (Ray r) {
+		return new Ray (transformPoint (r.start), transformVec (r.dir));
+	}
+
 	private double[][] mat;
 
 	private Transform (double[][] m) {
