@@ -38,5 +38,24 @@ public class Bigframe {
 		}
 		return d;
 	}
-				
+
+	public void print () {
+		System.out.println ("/ " + name);
+		if (stack.isEmpty()) {
+			System.out.print ("\\ ");
+		} else {
+			System.out.print ("| ");
+		}
+		base.print();
+		System.out.println();
+		for (int i=0; i < stack.size(); i++) {
+			if (i == stack.size() - 1) {
+				System.out.print ("\\ ");
+			} else {
+				System.out.print ("| ");
+			}
+			stack.get(i).print();
+			System.out.println();
+		}
+	}
 }

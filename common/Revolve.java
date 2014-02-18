@@ -13,4 +13,8 @@ public class  Revolve extends Node {
 		return null;
 	}
 
+	public String getString () {
+		return "Revolve";
+	}
+
 }

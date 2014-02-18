@@ -79,4 +79,18 @@ public class Transform {
 		}
 		return new Transform (m);
 	}
+
+	public String toString () {
+		StringBuilder sb = new StringBuilder("[");
+		for (int i=0; i<4; i++) {
+			sb.append ("[");
+			for (int j=0; j<4; j++) {
+				sb.append(Float.toString ((float) mat[i][j]) + ((j!=3) ? "," : ""));
+			}
+			sb.append ("]" + ((i != 3) ? "," : ""));
+		}
+		sb.append ("]");
+		return sb.toString();
+	}
+
 }

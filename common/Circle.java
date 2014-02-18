@@ -2,13 +2,19 @@ package common ;
 import java.util.ArrayList;
 public class  Circle extends Node {
 
-	/* Unit circle on the xy-plane */
+	/* Origin-centered circle on the xy-plane */
+
+	public double rad = 1;
 
 	public Circle () {
 	}
 
+	public Circle (double r) {
+		this.rad = r;
+	}
+
 	public double csg (Float3 pt) {
-		return Math.max (pt.z, Math.sqrt(pt.x*pt.x + pt.y*pt.y) - 1);
+		return Math.max (pt.z, Math.sqrt(pt.x*pt.x + pt.y*pt.y) - rad);
 	}
 
 	public Intersection intersection (Ray r) {
@@ -25,7 +31,7 @@ public class  Circle extends Node {
 			return Intersection.NONE;
 		}
 		double b = dir.dot (omc);
-		double c = omc.dot(omc) - 1;
+		double c = omc.dot(omc) - rad*rad;
 		if (b*b - c < 0) {
 			return Intersection.NONE;
 		}
@@ -53,7 +59,7 @@ public class  Circle extends Node {
 			return ipts;
 		}
 		double b = dir.dot (omc);
-		double c = omc.dot(omc) - 1;
+		double c = omc.dot(omc) - rad*rad;
 		if (b*b - c < 0) {
 			return ipts;
 		}
@@ -67,6 +73,10 @@ public class  Circle extends Node {
 			ipts.add (new Intersection (t0, this));
 		}
 		return ipts;
+	}
+
+	public String getString () {
+		return "Circle, r = " + rad;
 	}
 
 }

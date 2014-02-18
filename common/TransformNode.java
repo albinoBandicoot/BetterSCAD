@@ -19,4 +19,8 @@ public class TransformNode extends Node {
 	public ArrayList<Intersection> allIntersections (Ray r) {
 		return left.allIntersections (xform.transformRay (r));
 	}
+
+	public String getString () {
+		return "Xform mat = " + xform;
+	}
 }

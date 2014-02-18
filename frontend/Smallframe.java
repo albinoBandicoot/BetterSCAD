@@ -1,5 +1,5 @@
 package frontend;
-import java.util.HashMap;
+import java.util.*;
 public class Smallframe {
 
 	public HashMap <String, Datum> entries;
@@ -16,6 +16,13 @@ public class Smallframe {
 			return new Undef();
 		}
 		return d;
+	}
+
+	public void print () {
+		System.out.print ("(" + name + "): ");
+		for (Map.Entry<String, Datum> e : entries.entrySet()) {
+			System.out.print (e.getKey() + " = " + e.getValue() + ", ");
+		}
 	}
 
 

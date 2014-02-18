@@ -25,5 +25,31 @@ public abstract class Node {
 
 	// something for the plane intersection; perhaps there should be an interface that gives a closed-form curve for the plane intersection that a subset of the nodes implement.
 	
+	public abstract String getString ();
+
+	public final String toString () {
+		return stringify (0);
+	}
+
+	private String stringify (int depth) {
+		StringBuilder sb = new StringBuilder ();
+		for (int i=0; i<depth; i++) {
+			sb.append ("    ");
+		}
+		sb.append (getString());
+		if (left != null) {
+			sb.append("\n");
+			sb.append(left.stringify (depth+1) + "\n");
+		} else {
+			if (right != null) {
+				sb.append ("<null>\n");
+			}
+		}
+		if (right != null) {
+			sb.append (right.stringify (depth+1) + "\n");
+		}
+		return sb.toString();
+	}
+	
 }
 

@@ -1,10 +1,10 @@
-module a () {
-	x = 10;
-	if (x == 5) {
-		module b () {
-			sphere (1);
-		}
-		b();
-	}
+intersection () {
+	i = 12;
+	sphere (r=5);
+	sphere (r=2*i);
+	f (5);
 }
-		
+
+module f () {
+	sphere (r=i);
+}

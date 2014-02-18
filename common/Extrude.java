@@ -41,4 +41,8 @@ public class  Extrude extends Node {
 		return null;
 	}
 
+	public String getString () {
+		return "Extrude h = " + h;
+	}
+
 }

@@ -15,6 +15,7 @@ public class Interpreter {
 		// push a Bigframe that has the predefined variables in it.
 		Bigframe b = new Bigframe ("ROOT");
 		for (Map.Entry<String, STE> e : t.st.parent.vars.entries.entrySet()) {
+			System.err.println("Adding " + e.getKey() + " to bigframe");
 			b.put (e.getKey(), evalExpr (((STE) e.getValue()).t));	// these will actually just be constants
 		}
 		rts.push(b);
@@ -49,6 +50,8 @@ public class Interpreter {
 			return new Scalar ((Double) t.data);
 		} else if (t.type == Treetype.SLIT) {
 			return new Str (t.name());
+		} else if (t.type == Treetype.UNDEF) {
+			return new Undef();
 		} else if (t.type == Treetype.VECTOR) {
 			Vec v = new Vec ();
 			for (Tree ch : t.children) {
@@ -59,8 +62,11 @@ public class Interpreter {
 			return ((Op) t.data).eval (evalExpr (t.children.get(0)), t.children.size() > 1 ? evalExpr(t.children.get(1)) : null);
 		} else if (t.type == Treetype.FCALL) {
 			return runFcall (t);
+		} else if (t.type == Treetype.IDENT) {
+			return findVar (t.name());
 		} else {
 			System.err.println ("Uh oh, bad tree type in evalExpr: " + t);
+			Thread.currentThread().dumpStack();
 			System.exit(1);
 		}
 		return null;
@@ -70,7 +76,16 @@ public class Interpreter {
 		return run (root);
 	}
 
+	private void printStack () {
+		for (int i=0; i<rts.size(); i++) {
+			rts.get(i).print();
+		}
+	}
+
 	private Node run (Tree t) {
+		System.out.println ("RUNNING node. type = " + t.type);
+		printStack();
+		Thread.currentThread().dumpStack();
 		/* FIXME: for IFs and FORs we need to do stuff to the stack */
 		if (t.type == Treetype.IF) {
 			for (Tree ch : t.children) {	// the CONDITION trees
@@ -89,6 +104,19 @@ public class Interpreter {
 			}
 		} else if (t.type == Treetype.MCALL) {
 			return runMcall (t);
+		} else if (t.type == Treetype.ROOT) {
+			Bigframe b = new Bigframe ("Root");
+			for (Map.Entry<String, STE> e : t.st.vars.entries.entrySet()) {
+				if (Prefs.current.RUNTIME_VARS) {
+					b.base.entries.put (e.getKey(), new Undef());
+				} else {
+					b.base.entries.put (e.getKey(), evalExpr (e.getValue().t));
+				}
+			}
+			rts.push (b);
+			return makeExplicit (runList (t.children, 0), CSG.UNION);
+		} else if (t.type == Treetype.MODULE || t.type == Treetype.FUNCTION) {
+			// skip over.
 		} else {
 			System.err.println ("Bad tree type in run. " + t);
 			System.exit(1);
@@ -102,7 +130,7 @@ public class Interpreter {
 		for (int i=start; i<t.size(); i++) {
 			Node n = run (t.get(i));
 			if (n != null) {	// it would be null if, for example, the node was an assignment or a definition
-				ch.add (run (t.get(i)));
+				ch.add (n);
 			}
 		}
 		return ch;
@@ -125,6 +153,7 @@ public class Interpreter {
 				sf.entries.put (e.getKey(), evalExpr (e.getValue().t));
 			}
 		}
+		rts.peek().stack.push (sf);
 	}
 
 	// According to the parameter profile in stat (corresponds to a module or function definition), 
@@ -150,7 +179,7 @@ public class Interpreter {
 				b.base.entries.put (ch.name(), evalExpr (ch.children.get(0)));
 			} else {
 				if (pos < stat.children.size()) {
-					Datum d = evalExpr (ch.children.get(0));
+					Datum d = evalExpr (ch);
 					if (d instanceof Undef) {
 						int klass = predef ? 1 : 2;
 						if (klass <= Prefs.current.PROTECT_FROM_UNDEF) {
@@ -165,8 +194,9 @@ public class Interpreter {
 	}
 
 	private void populateStaticallyEnclosingLocals (Bigframe b, Tree t) {
+		if (t.st.parent == null) return;	// this will happen for the predefined modules
 		STSet pset = t.st.parent;
-		while (pset.tree.type != Treetype.MODULE) {
+		while (pset.tree.type != Treetype.MODULE && pset.tree.type != Treetype.ROOT) {
 			for (String vname : pset.vars.entries.keySet()) {
 				b.base.entries.put (vname, findVar (vname));	// we use findVar since we might
 				// be using runtime variables, and we want the actual current value.
@@ -181,6 +211,7 @@ public class Interpreter {
 	 * The module's definition is the actual code associated with the module. */
 
 	private Node runMcall (Tree mc) {
+		System.out.println ("Running mcall " + mc.name());
 		/* To run a module: first, get the Node that represents the children. This will involve pushing
 		 * a smallframe (so that local variables to the module body are scoped properly) and recursing.
 		 *
@@ -192,29 +223,36 @@ public class Interpreter {
 		*/
 
 		createSmallframe (mc);
+		System.out.print ("The top smallframe is: ");
+		rts.peek().stack.peek().print();
+		System.out.println();
+
 		ArrayList<Node> children = runList (mc.children, 1);	// don't run the parameters list (0th child)
 		popSmall();
 
 		Bigframe b = new Bigframe (mc.name() + "_def");
+		Tree mdef = mc.st.modules.findSTE(mc.name()).t;
 		// now we need to copy the variables from the statically enclosing scope into b.base. 
 		// This means we just need to copy any locals in statically enclosing smallframes, 
 		// since everything else will still be accessible.
-		populateStaticallyEnclosingLocals (b, mc);
+		populateStaticallyEnclosingLocals (b, mdef);
 
 		// the parameters get added in, shadowing any variables already present of the same name
-		Tree mdef = mc.st.modules.findSTE(mc.name()).t;
 		STSet st = mdef.findST();
 		boolean predef = st.parent == null;
-		populateParameters (b, mdef, mc.children.get(0), predef);
+		populateParameters (b, mdef.children.get(0), mc.children.get(0), predef);
 
 		// then we can push the new bigframe and go off and execute the module code.
 		rts.push (b);
 
+		Node result;
 		if (predef) {
-			return runPredefModule (mdef, children);
+			result = runPredefModule (mdef, children);
 		} else {
-			return runUserModule (mdef, children);
+			result = runUserModule (mdef, children);
 		}
+		rts.pop();
+		return result;
 	}
 
 	/* This will be in many ways similar to runMcall, except there is no child evaluation */
@@ -270,13 +308,20 @@ public class Interpreter {
 			Node r = new Revolve ();
 			r.left = makeExplicit (children, CSG.UNION);
 			return r;
+		} else if (n.equals ("sphere")) {
+			Datum r = findVar ("r");
+			if (r instanceof Scalar) {
+				return new Sphere (((Scalar) r).d);
+			} else {
+				System.err.println ("ERROR: non-scalar sphere radius");
+			}
+			return null;
 		/*
 		} else if (n.equals ("square")) {
 		} else if (n.equals ("polygon")) {
 		} else if (n.equals ("circle")) {
 		} else if (n.equals ("cube")) {
 		} else if (n.equals ("cylinder")) {
-		} else if (n.equals ("sphere")) {
 		} else if (n.equals ("translate")) {
 		} else if (n.equals ("scale")) {
 		} else if (n.equals ("rotate")) {
@@ -286,6 +331,7 @@ public class Interpreter {
 		*/
 		} else {
 			System.err.println ("Unsupported or erroneous module: " + n);
+			Thread.currentThread().dumpStack();
 			System.exit(1);
 		}
 		return null;
@@ -305,8 +351,22 @@ public class Interpreter {
 	/* Makes implicit unions or intersections between a list of nodes explicit. 
 	 * The 'type' parameter corresponds to values defined in common/CSG.java */
 	private Node makeExplicit (ArrayList<Node> nodes, int type) {
-		return null;
-
+		if (nodes.isEmpty()) return null;
+		if (nodes.size() == 1) return nodes.get(0);
+		CSG top = new CSG (type);
+		CSG c = top;
+		int i = 0;
+		while (i < nodes.size() - 2) {
+			c.left = nodes.get(i);
+			CSG n = new CSG (type);
+			c.right = n;
+			c = n;
+			i++;
+		}
+		c.left = nodes.get(i);
+		c.right = nodes.get(i+1);
+		return top;
 	}
+
 }
 

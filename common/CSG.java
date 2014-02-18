@@ -58,4 +58,13 @@ public class  CSG extends Node {
 		}
 		return res;
 	}
+
+	public String getString () {
+		switch (type) {
+			case UNION:	return "Union";
+			case INTERSECTION: return "Intersection";
+			case DIFFERENCE: return "Difference";
+			default: return "BAD CSG TYPE";
+		}
+	}
 }

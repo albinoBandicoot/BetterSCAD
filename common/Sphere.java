@@ -2,13 +2,20 @@ package common ;
 import java.util.ArrayList;
 public class  Sphere extends Node {
 
-	/* This just defines the unit sphere centered at the origin. All other spheres are made by transformations */
+	/* This just defines spheres centered at the origin. All other spheres are made by transformations */
+
+	public double rad;
 
 	public Sphere () {
+		rad = 1;
+	}
+
+	public Sphere (double r) {
+		this.rad = r;
 	}
 
 	public double csg (Float3 p) {
-		return p.mag() - 1;
+		return p.mag() - rad;
 	}
 
 	/* This only returns the first (closest) positive intersection with the sphere, or null if there is no 
@@ -17,7 +24,7 @@ public class  Sphere extends Node {
 		/* See p 739 of Real Time Rendering */
 		Float3 omc = r.start;
 		double b = r.dir.dot (omc);
-		double c = omc.dot(omc) - 1;
+		double c = omc.dot(omc) - rad*rad;
 		if (b*b - c < 0) {
 			return Intersection.NONE;
 		}
@@ -36,7 +43,7 @@ public class  Sphere extends Node {
 		ArrayList<Intersection> ipts = new ArrayList<Intersection>();
 		Float3 omc = r.start;
 		double b = r.dir.dot (omc);
-		double c = omc.dot(omc) - 1;
+		double c = omc.dot(omc) - rad*rad;
 		if (b*b - c < 0) {
 			return ipts;
 		}
@@ -50,5 +57,9 @@ public class  Sphere extends Node {
 			ipts.add (new Intersection (t0, this));
 		}
 		return ipts;
+	}
+
+	public String getString () {
+		return "Sphere, r = " + rad;
 	}
 }

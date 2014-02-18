@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash
 
 # A little script for printing out a nice linecount.
 for file in *

@@ -14,15 +14,18 @@ public class Semantics {
 	public static void makeSymtables (Tree root) {
 		root.createST();
 		STSet runtimes = new STSet (null, null);
+		runtimes.tree = new Tree (Treetype.ROOT);
 		root.st.parent = runtimes;
 		// now add all of the predefined modules and functions
 		String[] modules = {"union", "intersection", "difference", "assign", "square", "circle", "polygon", "cube", "cylinder", "sphere", "linear_extrude", "rotate_extrude", "translate", "scale", "rotate", "mirror", "multmatrix", "color"};
-		String[][] mparam = {{}, {}, {}, {}, {"size", "center"}, {"r", "center"}, {"points", "paths", "convexity"}, {"size", "center"}, {"r", "center"}, {"height", "center", "convexity", "twist", "slices", "scale"}, {"convexity"}, {"v"}, {"v"}, {"a", "v"}, {"v"}, {"m"}, {"c", "alpha"}};
-		Datum[][] mdefaults = {{}, {}, {}, {}, {new Scalar(1), new Scalar (0)}, {new Scalar(1), new Scalar(0)}, {new Undef(), new Undef(), new Scalar(5)}, {new Scalar(1), new Scalar(0)}, {new Scalar(1), new Scalar(0)}, {new Scalar(1), new Scalar(0), new Scalar(5), new Scalar(0), new Undef(), new Scalar(1)}, {new Scalar(5)}, {new Vec(0,0,0)}, {new Vec(1,1,1)}, {new Vec(0,0,0), new Undef()}, {new Vec(1,0,0)}, {new Vec(new Vec(1,0,0), new Vec(0,1,0), new Vec(0,0,1))}, {new Vec(0.8, 0.8, 0), new Scalar(1)}};
+		String[][] mparam = {{}, {}, {}, {}, {"size", "center"}, {"r", "center"}, {"points", "paths", "convexity"}, {"size", "center"}, {"r", "h", "center"}, {"r", "center"}, {"height", "center", "convexity", "twist", "slices", "scale"}, {"convexity"}, {"v"}, {"v"}, {"a", "v"}, {"v"}, {"m"}, {"c", "alpha"}};
+		Datum[][] mdefaults = {{}, {}, {}, {}, {new Scalar(1), new Scalar (0)}, {new Scalar(1), new Scalar(0)}, {new Undef(), new Undef(), new Scalar(5)}, {new Scalar(1), new Scalar(0)}, {new Scalar(1), new Scalar(1), new Scalar(0)}, {new Scalar(1), new Scalar(0)}, {new Scalar(1), new Scalar(0), new Scalar(5), new Scalar(0), new Undef(), new Scalar(1)}, {new Scalar(5)}, {new Vec(0,0,0)}, {new Vec(1,1,1)}, {new Vec(0,0,0), new Undef()}, {new Vec(1,0,0)}, {new Vec(new Vec(1,0,0), new Vec(0,1,0), new Vec(0,0,1))}, {new Vec(0.8, 0.8, 0), new Scalar(1)}};
 		String[] functions = {"cos", "sin", "tan", "acos", "asin", "atan", "atan2", "abs", "ceil", "exp", "floor", "ln", "len", "log", "lookup", "max", "min", "norm", "pow", "rands", "round", "sign", "sqrt", "str"};
 
 		for (int i=0; i<modules.length; i++) {
-			runtimes.modules.put (modules[i], createPListTree (mparam[i], mdefaults[i]));
+			Tree mdef = createModuleTree (mparam[i], mdefaults[i]);
+			mdef.data = modules[i];
+			runtimes.modules.put (modules[i], mdef);
 		}
 
 		for (String f : functions) {
@@ -32,24 +35,30 @@ public class Semantics {
 		runtimes.vars.put ("true", new Tree (Treetype.FLIT, 1.0));
 		runtimes.vars.put ("false", new Tree (Treetype.FLIT, 0.0));
 		runtimes.vars.put ("PI", new Tree (Treetype.FLIT, 3.14159265358979232));
-		runtimes.vars.put ("undef", null);
+		runtimes.vars.put ("undef", new Tree (Treetype.UNDEF));
 
 		fillST (root);
 		System.err.println ("Symbol tables complete");
 	}
 
-	private static Tree createPListTree (String[] pnames, Datum[] defs) {
+	private static Tree createModuleTree (String[] pnames, Datum[] defs) {
+		Tree mdef = new Tree (Treetype.MODULE);
 		Tree plist = new Tree (Treetype.PARAMLIST);
+		mdef.addChild (plist);	// remember this makes a parent pointer in plist.
+		mdef.createST();
 		for (int i=0; i<pnames.length; i++) {
 			Tree p = new Tree (Treetype.PARAM, pnames[i]);
 			if (defs[i] == null || defs[i] instanceof Undef) {
-				plist.children.add (new Tree (Treetype.PARAM, pnames[i]));
+				plist.addChild (new Tree (Treetype.PARAM, pnames[i]));
 			} else {
-				p.children.add (getTreeFromDatum (defs[i]));
+				p.addChild (getTreeFromDatum (defs[i]));
 			}
-			plist.children.add (p);
+			plist.addChild (p);
 		}
-		return plist;
+		for (Tree p : plist.children) {
+			mdef.st.vars.put (p.name(), p.children.isEmpty() ? null : p.children.get(0));	// that child will be null if there's no default value. This is OK.
+		}
+		return mdef;
 	}
 
 	private static Tree getTreeFromDatum (Datum d) {
@@ -70,8 +79,6 @@ public class Semantics {
 		}
 		return null;
 	}
-
-
 
 	private static void fillST (Tree t) {
 		System.out.println ("Will fill symbol table for tree of type " + t.type);
@@ -108,27 +115,6 @@ public class Semantics {
 					fillST (cond.children.get(i));
 				}
 			}
-
-			/*
-			int i = 0;
-			while (i < t.children.size()) {
-				Tree ch = t.children.get(i);
-				if (ch.type == Treetype.CONDITION) {
-					ch.createST();
-					Tree statement;
-					i++;
-					while (i < t.children.size()) {
-						statement = t.children.get(i);
-						if (statement.type == Treetype.CONDITION) {
-							break;
-						} else {
-							fillST (statement);
-						}
-						i++;
-					}
-				}
-			}
-			*/
 		} else if (t.type == Treetype.MCALL) {
 			t.createST();	// for locals
 			System.err.println ("Filling MCALL with name " + t.name());

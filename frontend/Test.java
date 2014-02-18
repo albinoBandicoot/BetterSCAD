@@ -2,6 +2,7 @@ package frontend;
 
 import java.util.ArrayList;
 import java.io.*;
+import common.*;
 
 public class Test {
 
@@ -12,7 +13,8 @@ public class Test {
 		Semantics.makeSymtables (t);
 		System.out.println ("Semantics has finished");
 		System.out.println(t);
-		System.out.println ("We're done; goodbye.");
-
+		Interpreter i = new Interpreter (t);
+		Node n = i.run ();
+		System.out.println ("Execution complete; CSG tree is \n" + n);
 	}
 }
