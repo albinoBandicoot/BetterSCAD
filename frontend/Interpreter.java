@@ -72,6 +72,8 @@ public class Interpreter {
 			return new Scalar ((Double) t.data);
 		} else if (t.type == Treetype.SLIT) {
 			return new Str (t.name());
+		} else if (t.type == Treetype.BLIT) {
+			return new Bool ((Boolean) t.data);
 		} else if (t.type == Treetype.UNDEF) {
 			return new Undef();
 		} else if (t.type == Treetype.VECTOR) {
@@ -123,7 +125,6 @@ public class Interpreter {
 			for (Tree ch : t.children) {	// the CONDITION trees
 				Datum cond = evalExpr (ch.children.get(0));
 				System.out.println ("The value of the condition is " + cond);
-				System.out.println ("The value of x is " + findVar("x"));
 
 				if (cond.isTrue()) {
 					// we need to push a smallframe with the locals.

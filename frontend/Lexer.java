@@ -7,7 +7,7 @@ import java.util.Scanner;
 
 public class Lexer {
 
-	public static final String[] keywords = {"if", "else", "for", "intersection_for", "function", "module", "include", "use", "undef"};
+	public static final String[] keywords = {"if", "else", "for", "intersection_for", "function", "module", "include", "use", "undef", "true", "false"};
 	public static final String[] blocks = {"rotate", "translate", "scale", "mirror", "multmatrix", "color", "assign", "render", "linear_extrude", "rotate_extrude", "union", "difference", "intersection"};
 
 	public static boolean isBlock (String s) {
@@ -164,7 +164,14 @@ public class Lexer {
 		while (i < s.length()) {
 			String key = getKeyword ();
 			String op = getOperator ();
+
 			if (key != null) {
+				if (key.equals ("true") || key.equals("false")) {
+					tokens.add (new Token (Tokentype.BLIT, key, line(i)));
+					i += key.length();
+					skipWhitespace();
+					continue;
+				}
 				Token t = new Token (Tokentype.KEYWORD, key, line(i));
 				tokens.add (t);
 				i += key.length();

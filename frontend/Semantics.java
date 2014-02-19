@@ -36,8 +36,8 @@ public class Semantics {
 			runtimes.functions.put (f, null);
 		}
 
-		runtimes.vars.put ("true", new Tree (Treetype.FLIT, 1.0));
-		runtimes.vars.put ("false", new Tree (Treetype.FLIT, 0.0));
+		runtimes.vars.put ("true", new Tree (Treetype.BLIT, true));
+		runtimes.vars.put ("false", new Tree (Treetype.BLIT, false));
 		runtimes.vars.put ("PI", new Tree (Treetype.FLIT, 3.14159265358979232));
 		runtimes.vars.put ("undef", new Tree (Treetype.UNDEF));
 

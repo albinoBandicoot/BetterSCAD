@@ -522,9 +522,9 @@ public class Parser {
 
 	public Tree parseL6 () {	// or
 		Tree ch = parseL5 ();
-		Token t = peek();
-		while (t.isOp (Op.OR)) {
-			Tree or = new Tree (Treetype.OP, t.getOp());
+		while (peek().isOp (Op.OR)) {
+			System.err.println ("Detected or; token = " + i + ", tree = " + ch);
+			Tree or = new Tree (Treetype.OP, Op.OR);
 			next();
 			or.addChild (ch);
 			or.addChild (parseL5());
@@ -614,6 +614,11 @@ public class Parser {
 			return res;
 		} else if (peek().type == Tokentype.OPEN_BRACKET) {	// vector
 			return parseVector();
+		} else if (peek().type == Tokentype.BLIT) {	// boolean literal
+			Tree res = new Tree (Treetype.BLIT);
+			res.data = Boolean.parseBoolean (peek().val);
+			next();
+			return res;
 		} else if (peek().type == Tokentype.SLIT) {	// string literal
 			Tree res = new Tree(Treetype.SLIT);
 			res.data = peek().val;

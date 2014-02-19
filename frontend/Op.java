@@ -85,6 +85,24 @@ public enum Op {
 				return new Undef();
 			}
 		}
+		if (lhs instanceof Bool || rhs instanceof Bool) {	// define the relational ops
+			if (this == EQ || this == NE) {
+				boolean eq;
+				if (lhs instanceof Bool && rhs instanceof Bool) {
+					eq = lhs.isTrue() == rhs.isTrue();
+				} else {
+					eq = false;
+				}
+				return (this == EQ) ? new Bool (eq) : new Bool (!eq);
+			} else if (this == LT || this == GT) {	// <, <=, >=, and > are defined rather bizarely in OpenSCAD
+				return new Bool (false);
+			} else if (this == LE || this == GE) {
+				return new Bool (true);
+			} else {
+				return new Undef();
+			}
+		}
+
 		if (lhs instanceof Scalar && rhs instanceof Scalar) {
 			double a = ((Scalar) lhs).d;
 			double b = ((Scalar) rhs).d;
