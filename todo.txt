@@ -11,9 +11,6 @@
 			- do we need to figure out ray-ellipsoidal-torus intersection?
 		
 	- implement polygon
-	- figure out where to put transformations 
-		- one matrix per node; always transform, unused => identity matrix?
-		- special transformation nodes
 	- how do bounding boxes work with the transformations?
 	- some tree manipulation is needed:
 		- move CSG ops of 2D objects outside their 3D generators

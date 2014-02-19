@@ -99,10 +99,10 @@ public class STSet {
 			return false;
 		}
 
-		public STE findSTE (String name) {
-			if (entries.containsKey (name)) return entries.get(name);
+		public Tree findTree (String name) {
+			if (entries.containsKey (name)) return entries.get(name).t;
 			if (parent != null) {
-				return getMatchingParent(this).findSTE (name);
+				return getMatchingParent(this).findTree (name);
 			}
 			return null;
 		}

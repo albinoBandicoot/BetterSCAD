@@ -501,7 +501,26 @@ public class Parser {
 
 	/* Expressions */
 
-	public Tree parseExpr () {	// or
+	public Tree parseExpr () {
+		Tree ch = parseL6 ();
+		Token t = peek();
+		if (t.type == Tokentype.QMARK) {
+			next();
+			Tree cond = new Tree (Treetype.COND_OP);
+			cond.addChild (ch);
+			cond.addChild (parseExpr());
+			if (peek().type == Tokentype.COLON) {
+				next();
+				cond.addChild (parseExpr());
+			} else {
+				error ("Expecting colon after first branch of conditional operator");
+			}
+			return cond;
+		}
+		return ch;
+	}
+
+	public Tree parseL6 () {	// or
 		Tree ch = parseL5 ();
 		Token t = peek();
 		while (t.isOp (Op.OR)) {

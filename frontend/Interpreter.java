@@ -82,6 +82,13 @@ public class Interpreter {
 			return v;
 		} else if (t.type == Treetype.OP) {
 			return ((Op) t.data).eval (evalExpr (t.children.get(0)), t.children.size() > 1 ? evalExpr(t.children.get(1)) : null);
+		} else if (t.type == Treetype.COND_OP) {
+			Datum cond = evalExpr (t.children.get(0));
+			if (cond.isTrue()) {
+				return evalExpr (t.children.get(1));
+			} else {
+				return evalExpr (t.children.get(2));
+			}
 		} else if (t.type == Treetype.FCALL) {
 			return runFcall (t);
 		} else if (t.type == Treetype.IDENT) {
@@ -233,14 +240,14 @@ public class Interpreter {
 
 		
 
-	// According to the parameter profile in stat (corresponds to a module or function definition), 
-	// add the parameters in plist to the bigframe's base. stat is needed to resolve the names
+	// According to the parameter profile in def (corresponds to a module or function definition), 
+	// add the parameters in plist to the bigframe's base. def is needed to resolve the names
 	// of positional parameters.
-	private void populateParameters (Bigframe b, Tree stat, Tree plist, boolean predef) {
+	private void populateParameters (Bigframe b, Tree def, Tree plist, boolean predef) {
 		int pos = 0;
 
 		// first initialize the defaults
-		for (Tree ch : stat.children) {
+		for (Tree ch : def.children) {
 			if (!ch.children.isEmpty()) {	// has a default value
 				b.base.entries.put (ch.name(), evalExpr (ch.children.get(0)));
 			} else {
@@ -255,7 +262,7 @@ public class Interpreter {
 			if (ch.type == Treetype.PARAM) {	// named
 				b.base.entries.put (ch.name(), evalExpr (ch.children.get(0)));
 			} else {
-				if (pos < stat.children.size()) {
+				if (pos < def.children.size()) {
 					Datum d = evalExpr (ch);
 					if (d instanceof Undef) {
 						int klass = predef ? 1 : 2;
@@ -263,7 +270,7 @@ public class Interpreter {
 							continue;
 						}
 					}
-					b.base.entries.put (stat.children.get(pos).name(), d);
+					b.base.entries.put (def.children.get(pos).name(), d);
 				}
 				pos++;
 			}
@@ -272,17 +279,20 @@ public class Interpreter {
 
 	private void populateStaticallyEnclosingLocals (Bigframe b, Tree t) {
 		if (t.st.parent.parent == null) return;	// this will happen for the predefined modules
-		STSet pset = t.st; //.parent;
+		STSet pset = t.findST();	// this should be t.st for mcalls, but may be higher up for fcalls
+		
 		// first put in our own locals. These have not yet been initialized.
+		/*
 		if (t.type != Treetype.MODULE) {	// if it is a module, we've taken care of this in populateParameters
 			for (String vname : pset.vars.entries.keySet()) {
 				if (Prefs.current.RUNTIME_VARS) {
 					b.base.entries.put (vname, new Undef());
 				} else {
-					b.base.entries.put (vname, evalExpr (t.st.vars.findSTE(vname).t));
+					b.base.entries.put (vname, evalExpr (pset.vars.findTree(vname)));
 				}
 			}
 		}
+		*/
 		pset = pset.parent;
 
 		do {
@@ -323,7 +333,11 @@ public class Interpreter {
 		ArrayList<Node> children = runList (mc.children, 1);	// don't run the parameters list (0th child)
 
 		Bigframe b = new Bigframe (mc.name() + "_def");
-		Tree mdef = mc.st.modules.findSTE(mc.name()).t;
+		Tree mdef = mc.st.modules.findTree(mc.name());
+		if (mdef == null) {
+			error ("Undefined module " + mc.name());
+			System.exit(1);
+		}
 		// now we need to copy the variables from the statically enclosing scope into b.base. 
 		// This means we just need to copy any locals in statically enclosing smallframes, 
 		// since everything else will still be accessible.
@@ -357,9 +371,14 @@ public class Interpreter {
 			System.exit(1);
 		}
 		Bigframe b = new Bigframe (fc.name());
-		populateStaticallyEnclosingLocals (b, fc);
-		Tree fdef = fc.st.functions.findSTE(fc.name()).t;
-		populateParameters (b, fdef, fc.children.get(0), false);	// is false the right value to pass for this?
+		Tree fdef = fc.findST().functions.findTree(fc.name());
+		if (fdef == null) {
+			error ("Undefined function " + fc.name());
+			System.exit(1);
+		}
+		System.err.println ("Found function definition tree # " + (fdef == null ? "null" : fdef.id));
+		populateStaticallyEnclosingLocals (b, fdef);
+		populateParameters (b, fdef.children.get(0), fc.children.get(0), false);	// is false the right value to pass for this?
 		rts.push(b);
 		STSet st = fdef.findST();
 

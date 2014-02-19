@@ -53,6 +53,9 @@ public enum Op {
 		if (this == NOT) {
 			return new Bool(!lhs.isTrue());
 		}
+		if (this == SUB && rhs == null) {
+			return eval (new Scalar(0), lhs);
+		}
 		if (this == AND) {
 			return new Bool (lhs.isTrue() && rhs.isTrue());
 		}
