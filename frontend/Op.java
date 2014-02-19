@@ -103,6 +103,8 @@ public enum Op {
 					return new Bool (a <= b);
 				case EQ:
 					return new Bool (a == b);
+				case NE:
+					return new Bool (a != b);
 				case GE:
 					return new Bool (a >= b);
 				case GT:

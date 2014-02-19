@@ -1,6 +1,7 @@
 package frontend;
 
 import java.util.ArrayList;
+import common.Float3;
 public class Vec extends Datum {
 
 	public ArrayList<Datum> vals;
@@ -75,6 +76,10 @@ public class Vec extends Datum {
 			}
 		}
 		return 0;
+	}
+
+	public Float3 getFloat3 () {
+		return new Float3 (getd(0), getd(1), getd(2));
 	}
 
 	public boolean isTrue () {

@@ -35,7 +35,7 @@ public class STSet {
 	}
 
 	public String toString () {
-		return "modules: " + modules + "  functions: " + functions + "  vars: " + vars;
+		return "ST# " + id + ". PID = " + (parent==null?"null":parent.id) + ". modules: " + modules + "  functions: " + functions + "  vars: " + vars;
 	}
 
 	public class Symtable {

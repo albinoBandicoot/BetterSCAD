@@ -11,11 +11,13 @@ public class Semantics {
 		return t.type == Treetype.ROOT || t.type == Treetype.MODULE || t.type == Treetype.FUNCTION;
 	}
 
-	public static void makeSymtables (Tree root) {
+	public static Tree makeSymtables (Tree root) {
+		Tree rt = new Tree (Treetype.ROOT);
+		STSet runtimes = new STSet (null, rt);
+		rt.st = runtimes;
+		rt.addChild (root);
 		root.createST();
-		STSet runtimes = new STSet (null, null);
-		runtimes.tree = new Tree (Treetype.ROOT);
-		root.st.parent = runtimes;
+		
 		// now add all of the predefined modules and functions
 		String[] modules = {"union", "intersection", "difference", "assign", "square", "circle", "polygon", "cube", "cylinder", "sphere", "linear_extrude", "rotate_extrude", "translate", "scale", "rotate", "mirror", "multmatrix", "color"};
 		String[][] mparam = {{}, {}, {}, {}, {"size", "center"}, {"r", "center"}, {"points", "paths", "convexity"}, {"size", "center"}, {"r", "h", "center"}, {"r", "center"}, {"height", "center", "convexity", "twist", "slices", "scale"}, {"convexity"}, {"v"}, {"v"}, {"a", "v"}, {"v"}, {"m"}, {"c", "alpha"}};
@@ -24,7 +26,9 @@ public class Semantics {
 
 		for (int i=0; i<modules.length; i++) {
 			Tree mdef = createModuleTree (mparam[i], mdefaults[i]);
+			mdef.st.parent = runtimes;
 			mdef.data = modules[i];
+			rt.addChild (mdef);
 			runtimes.modules.put (modules[i], mdef);
 		}
 
@@ -39,6 +43,7 @@ public class Semantics {
 
 		fillST (root);
 		System.err.println ("Symbol tables complete");
+		return runtimes.tree;
 	}
 
 	private static Tree createModuleTree (String[] pnames, Datum[] defs) {
@@ -107,7 +112,9 @@ public class Semantics {
 		} else if (t.type == Treetype.FOR || t.type == Treetype.INTFOR) {
 			t.createST();
 			t.st.vars.put (t.children.get(0).name(), t.children.get(0));	// I guess. We might change this later.
-			fillST (t.children.get(1));
+			for (int i=1; i<t.children.size(); i++) {
+				fillST (t.children.get(i));
+			}
 		} else if (t.type == Treetype.IF) {
 			for (Tree cond : t.children) {
 				cond.createST();

@@ -14,9 +14,8 @@ public class Transform {
 
 	private double[][] mat;
 
-	private Transform (double[][] m) {
-		mat = new double[4][4];
-
+	public Transform (double[][] m) {
+		mat = m;
 	}
 
 	public Transform () {

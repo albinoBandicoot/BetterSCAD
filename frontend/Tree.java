@@ -8,12 +8,16 @@ public class Tree {
 	public ArrayList<Tree> children;
 	public Tree parent;
 	public STSet st;	// will only be used at nodes that need it.
+	public int id;
+
+	private static int num = 0;
 
 	public Tree (Treetype type) {
 		this.type = type;
 		data = null;
 		children = new ArrayList<Tree>();
 		parent = null;
+		id = num++;
 	}
 
 	public Tree (Treetype type, Object data) {
@@ -21,6 +25,7 @@ public class Tree {
 		this.data = data;
 		children = new ArrayList<Tree> ();
 		parent = null;
+		id = num++;
 	}
 
 	public String name () {	// since the data is so often used to encode a name, why not have a convenience method for it?
@@ -67,7 +72,7 @@ public class Tree {
 		for (int i=0; i<depth; i++) {
 			sb.append ("   ");
 		}
-		sb.append (type.name() + "  ");
+		sb.append ("(" + id + ") " + type.name() + "   ");
 		if (data != null) {
 			if (data instanceof ArrayList) {
 				for (Object o : ((ArrayList) data)) {

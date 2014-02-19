@@ -22,6 +22,10 @@ public class Interpreter {
 		// now run the tree.
 	}
 
+	public void error (String message) {
+		System.err.println ("*** ERROR: " + message);
+	}
+
 	private void popSmall () {
 		Bigframe b = rts.peek();
 		if (!b.stack.isEmpty()) {
@@ -34,13 +38,31 @@ public class Interpreter {
 		Datum d = top.findDeep (name);	// always do a full search of the top bigframe.
 
 		int i = rts.size() - 2;
-		while (d.isUndef () && i >= 0) {
+		while (d == null && i >= 0) {
 			if (name.charAt(0) == '$') {	// special variable
 				d = rts.get(i).findDeep (name);
 			} else {
 				d = rts.get(i).findShallow (name);
 			}
 			i--;
+		}
+		if (d == null) {
+			error ("Undefined variable: " + name);
+			return new Undef();
+		}
+		return d;
+	}
+
+	private Datum findVarDeep (String name) {	// does a deep search regardless or variable name
+		Datum d = null;
+		int i = rts.size() - 1;
+		while (d == null && i >= 0) {
+			d = rts.get(i).findDeep (name);
+			i--;
+		}
+		if (d == null) {
+			error ("Undefined variable (deep): "+ name);
+			return new Undef();
 		}
 		return d;
 	}
@@ -64,6 +86,10 @@ public class Interpreter {
 			return runFcall (t);
 		} else if (t.type == Treetype.IDENT) {
 			return findVar (t.name());
+		} else if (t.type == Treetype.NOP) {	// this is used for the else branch of conditionals{
+			return new Bool (true);
+		} else if (t.type == Treetype.RANGE) {	// this is only here because it will get added and then deleted when the for loop is constructed. It tries to evaulate the range before deleting it, so this is here so it doesn't crash.
+			return new Undef();
 		} else {
 			System.err.println ("Uh oh, bad tree type in evalExpr: " + t);
 			Thread.currentThread().dumpStack();
@@ -86,16 +112,55 @@ public class Interpreter {
 		System.out.println ("RUNNING node. type = " + t.type);
 		printStack();
 		Thread.currentThread().dumpStack();
-		/* FIXME: for IFs and FORs we need to do stuff to the stack */
 		if (t.type == Treetype.IF) {
 			for (Tree ch : t.children) {	// the CONDITION trees
-				if (evalExpr (ch.children.get(0)).isTrue()) {
-					return run (ch.children.get(1));
+				Datum cond = evalExpr (ch.children.get(0));
+				System.out.println ("The value of the condition is " + cond);
+				System.out.println ("The value of x is " + findVar("x"));
+
+				if (cond.isTrue()) {
+					// we need to push a smallframe with the locals.
+					createSmallframe (ch);
+					Node n = makeExplicit (runList (ch.children,1), CSG.UNION);
+					popSmall();
+					return n;
 				}
 			}
 			return null;
 		} else if (t.type == Treetype.FOR || t.type == Treetype.INTFOR) {
 			ArrayList<Node> res = new ArrayList<Node>();
+			Tree v = t.children.get(0);
+			if (v.type == Treetype.VECTOR) {
+				for (int i=0; i<v.children.size(); i++) {
+					createSmallframe (v.name(), evalExpr (v.children.get(i)));
+					createSmallframe (t);
+					rts.peek().stack.peek().entries.remove (v.name());	// undoes the automatic add of the loop variable to the second smallframe (it incorrectly initializes it with the whole expression)
+					res.add (makeExplicit (runList (t.children, 1), CSG.UNION));
+					popSmall();
+					popSmall();
+				}
+			} else if (v.type == Treetype.RANGE){ 
+				double start = (Double) v.children.get(0).data;
+				double end = (Double) v.children.get(1).data;
+				double inc = (Double) v.children.get(2).data;
+				if (inc == 0 || (end-start)/inc < 0) {
+					// bad range
+					error ("Bad range");
+					return null;
+				}
+				while (start <= end) {
+					createSmallframe (v.name(), new Scalar (start));
+					createSmallframe (t);
+					rts.peek().stack.peek().entries.remove (v.name());	// undoes the automatic add of the loop variable to the second smallframe (it incorrectly initializes it with the whole expression)
+					res.add (makeExplicit (runList (t.children, 1), CSG.UNION));
+					start += inc;
+					popSmall();
+					popSmall();
+				}
+			} else {
+				error ("Bad tree type for for loop statement");
+			}
+			return makeExplicit (res, t.type == Treetype.FOR ? CSG.UNION : CSG.INTERSECTION);
 
 		} else if (t.type == Treetype.ASSIGN) {
 			/* This should only be run if we're doing runtime assignment. */
@@ -143,7 +208,18 @@ public class Interpreter {
 	 * If RUNTIME_VARS if false, their trees from the static ST are evaluated and then they are entered.
 	*/
 	private void createSmallframe (Tree t) {
-		Smallframe sf = new Smallframe (t.type.toString());
+		Smallframe sf = new Smallframe (t.type.toString() + ((t.data instanceof String) ? (" " + t.name()) : ""));
+		loadSmallframe (t, sf);
+		rts.peek().stack.push (sf);
+	}
+
+	private void createSmallframe (String s, Datum d) {	// create and push a smallframe with just the pair (s,d). Useful for loop variables.
+		Smallframe sf = new Smallframe ("singlet " + s);
+		sf.entries.put (s, d);
+		rts.peek().stack.push (sf);
+	}
+
+	private void loadSmallframe (Tree t, Smallframe sf) {
 		if (Prefs.current.RUNTIME_VARS) {
 			for (String vname : t.st.vars.entries.keySet()) {
 				sf.entries.put (vname, new Undef());
@@ -153,8 +229,9 @@ public class Interpreter {
 				sf.entries.put (e.getKey(), evalExpr (e.getValue().t));
 			}
 		}
-		rts.peek().stack.push (sf);
 	}
+
+		
 
 	// According to the parameter profile in stat (corresponds to a module or function definition), 
 	// add the parameters in plist to the bigframe's base. stat is needed to resolve the names
@@ -194,16 +271,28 @@ public class Interpreter {
 	}
 
 	private void populateStaticallyEnclosingLocals (Bigframe b, Tree t) {
-		if (t.st.parent == null) return;	// this will happen for the predefined modules
-		STSet pset = t.st.parent;
-		while (pset.tree.type != Treetype.MODULE && pset.tree.type != Treetype.ROOT) {
+		if (t.st.parent.parent == null) return;	// this will happen for the predefined modules
+		STSet pset = t.st; //.parent;
+		// first put in our own locals. These have not yet been initialized.
+		if (t.type != Treetype.MODULE) {	// if it is a module, we've taken care of this in populateParameters
 			for (String vname : pset.vars.entries.keySet()) {
-				b.base.entries.put (vname, findVar (vname));	// we use findVar since we might
+				if (Prefs.current.RUNTIME_VARS) {
+					b.base.entries.put (vname, new Undef());
+				} else {
+					b.base.entries.put (vname, evalExpr (t.st.vars.findSTE(vname).t));
+				}
+			}
+		}
+		pset = pset.parent;
+
+		do {
+			for (String vname : pset.vars.entries.keySet()) {
+				b.base.entries.put (vname, findVarDeep (vname));	// we use findVar since we might
 				// be using runtime variables, and we want the actual current value.
 			}
 			pset = pset.parent;
 			if (pset == null) break;
-		}
+		} while (pset.tree.type != Treetype.MODULE && pset.tree.type != Treetype.ROOT);
 	}
 
 	/* Some terminology about modules: the module's parameters are what get passed in parentheses. 
@@ -211,6 +300,10 @@ public class Interpreter {
 	 * The module's definition is the actual code associated with the module. */
 
 	private Node runMcall (Tree mc) {
+		if (rts.size() > Prefs.current.STACK_HEIGHT_CAP) {
+			error ("Stack height limit of " + Prefs.current.STACK_HEIGHT_CAP + " reachd.");
+			System.exit(1);	// for now; but this should be immediately fatal, somehow, in the real thing
+		}
 		System.out.println ("Running mcall " + mc.name());
 		/* To run a module: first, get the Node that represents the children. This will involve pushing
 		 * a smallframe (so that local variables to the module body are scoped properly) and recursing.
@@ -228,7 +321,6 @@ public class Interpreter {
 		System.out.println();
 
 		ArrayList<Node> children = runList (mc.children, 1);	// don't run the parameters list (0th child)
-		popSmall();
 
 		Bigframe b = new Bigframe (mc.name() + "_def");
 		Tree mdef = mc.st.modules.findSTE(mc.name()).t;
@@ -239,11 +331,13 @@ public class Interpreter {
 
 		// the parameters get added in, shadowing any variables already present of the same name
 		STSet st = mdef.findST();
-		boolean predef = st.parent == null;
+		boolean predef = mdef.parent.parent == null;
 		populateParameters (b, mdef.children.get(0), mc.children.get(0), predef);
 
 		// then we can push the new bigframe and go off and execute the module code.
 		rts.push (b);
+		System.out.println ("Now going off to run the definition of " + mc.name() + "; the stack is: ");
+		printStack();
 
 		Node result;
 		if (predef) {
@@ -252,11 +346,16 @@ public class Interpreter {
 			result = runUserModule (mdef, children);
 		}
 		rts.pop();
+		popSmall();
 		return result;
 	}
 
 	/* This will be in many ways similar to runMcall, except there is no child evaluation */
 	private Datum runFcall (Tree fc) {
+		if (rts.size() > Prefs.current.STACK_HEIGHT_CAP) {
+			error ("Stack height limit reached");
+			System.exit(1);
+		}
 		Bigframe b = new Bigframe (fc.name());
 		populateStaticallyEnclosingLocals (b, fc);
 		Tree fdef = fc.st.functions.findSTE(fc.name()).t;
@@ -311,6 +410,7 @@ public class Interpreter {
 		} else if (n.equals ("sphere")) {
 			Datum r = findVar ("r");
 			if (r instanceof Scalar) {
+				System.err.println ("GOOD: Returning new sphere");
 				return new Sphere (((Scalar) r).d);
 			} else {
 				System.err.println ("ERROR: non-scalar sphere radius");
@@ -322,11 +422,93 @@ public class Interpreter {
 		} else if (n.equals ("circle")) {
 		} else if (n.equals ("cube")) {
 		} else if (n.equals ("cylinder")) {
+		*/
 		} else if (n.equals ("translate")) {
+			Datum d = findVar ("v");
+			if (d instanceof Vec) {
+				Vec v = (Vec) d;
+				if (v.isFlat() && v.size() == 2 || v.size() == 3) {
+					TransformNode tn = new TransformNode (Transform.makeTranslate (v.getFloat3()));
+					tn.left = makeExplicit (children, CSG.UNION);
+					return tn;
+				}
+			}
+			error ("Translate expects a flat vector of length 2 or 3");
+			return null;
 		} else if (n.equals ("scale")) {
+			Datum d = findVar ("v");
+			TransformNode tn;
+			if (d instanceof Vec) {
+				Vec v = (Vec) d;
+				if (v.isFlat() && v.size() == 2 || v.size() == 3) {
+					Float3 s = v.getFloat3();
+					if (v.size() == 2) {
+						s.z = 1;
+					}
+					tn = new TransformNode (Transform.makeScale (s));
+				} else {
+					error ("Scale expects a scalar or flat vector of length 2 or 3");
+					return null;
+				}
+			} else if (d instanceof Scalar) {
+				double sfac = ((Scalar) d).d;
+				tn = new TransformNode (Transform.makeScale (new Float3 (sfac, sfac, sfac)));
+			} else {
+				error ("Scale expects a scalar or flat vector of length 2 or 3");
+				return null;
+			}
+			tn.left = makeExplicit (children, CSG.UNION);
+			return tn;
 		} else if (n.equals ("rotate")) {
+			Datum ad = findVar ("a");
+			Datum vd = findVar ("v");
+			if (! (vd instanceof Vec)) {
+				error ("Rotate expects a vector for its axis");
+				return null;
+			}
+			if (ad instanceof Vec) {	// x, y, z angles
+				if (! ((Vec) ad).isFlat()) {
+					error ("Rotate given a non-flat x,y,z angle vector");
+					return null;
+				}
+				Vec vad = (Vec) ad;
+				Transform x, y, z;
+				x = Transform.makeRotate (new Float3 (1,0,0), vad.getd(0));
+				y = Transform.makeRotate (new Float3 (0,1,0), vad.getd(1));
+				z = Transform.makeRotate (new Float3 (0,0,1), vad.getd(2));
+				x = x.append(y.append(z));
+				TransformNode tn = new TransformNode (x);
+				tn.left = makeExplicit (children, CSG.UNION);
+				return tn;
+
+			} else if (ad instanceof Scalar) {	// angle around axis v
+				TransformNode tn = new TransformNode (Transform.makeRotate (((Vec) vd).getFloat3(), ((Scalar) ad).d));
+				tn.left = makeExplicit (children, CSG.UNION);
+				return tn;
+			}
+			error ("Rotate expects either a scalar or a flat vector for its angle");
+			return null;
 		} else if (n.equals ("mirror")) {
 		} else if (n.equals ("multmatrix")) {
+			Datum m = findVar ("m");
+			if (! (m instanceof Vec)) {
+				error ("Expecting matrix in multmatrix");
+			}
+			Vec vm = (Vec) m;
+			if (vm.wellFormedMatrix() == -1) {
+				error ("Bad matrix");
+				return null;
+			}
+			double[][] mat = new double[4][4];
+			for (int i=0; i<4; i++){
+				 for (int j=0; j<4; j++) {
+					 mat[i][j] = ((Scalar) m.get(i).get(j)).d;
+				 }
+			}
+			TransformNode tn = new TransformNode (new Transform (mat));
+			tn.left = makeExplicit (children, CSG.UNION);
+			return tn;
+		/*
 		} else if (n.equals ("color")) {
 		*/
 		} else {
@@ -344,7 +526,6 @@ public class Interpreter {
 		// run the code
 		ArrayList<Node> result = runList (mdef.children, 1);
 		Node res = makeExplicit (result, CSG.UNION);
-		rts.pop();
 		return res;
 	}
 

@@ -39,6 +39,7 @@ public class Parser {
 
 	public void nferror (String message) {
 		System.err.println ("Parser nonfatal ERROR in line " + tokens.get(i).line + "(token " + i + "): " + message);
+		Thread.currentThread().dumpStack();
 	}
 
 	public boolean has (int x) {
@@ -330,6 +331,7 @@ public class Parser {
 					cond.addChild (parseStatement(res));
 				}
 				next();	// skip the close brace
+				boolean hit_else = false;
 				while (peek().is ("else")) {
 					next();
 					if (peek().is ("if")) {	// this is an ELSE IF branch
@@ -344,9 +346,9 @@ public class Parser {
 					} else if (peek().type == Tokentype.OPEN_BRACE) {	// this is the ELSE branch
 						next();
 						cond = new Tree (Treetype.CONDITION);
-						cond.addChild (null);
+						cond.addChild (new Tree (Treetype.NOP));
 						res.addChild (cond);	
-						break;	// we must stop looping once we hit an else branch
+						hit_else = true;
 					} else {
 						error ("Expecting 'if' or '{' after 'else'");
 					}
@@ -355,6 +357,7 @@ public class Parser {
 						cond.addChild (parseStatement(res));
 					}
 					next();
+					if (hit_else) break;
 				}
 				return res;
 			} else {
@@ -449,7 +452,7 @@ public class Parser {
 		}
 
 		if (peek().type != Tokentype.IDENT && peek().type != Tokentype.OP) {
-			System.err.println ("Warning - returning NOP tree");
+			nferror ("Warning - returning NOP tree");
 			return new Tree (Treetype.NOP);
 		}
 		if (peek().type == Tokentype.IDENT) {
@@ -478,6 +481,7 @@ public class Parser {
 		}
 		Tree call = parseCall(Treetype.MCALL);	// these are always going to be MODULE calls
 		if (dmode != null) call.addChild (dmode);
+		System.err.println ("The token after the parseCall is " + peek());
 		if (peek().type == Tokentype.SEMICOLON) {
 			next();
 			return call;
@@ -496,6 +500,68 @@ public class Parser {
 	}
 
 	/* Expressions */
+
+	public Tree parseExpr () {	// or
+		Tree ch = parseL5 ();
+		Token t = peek();
+		while (t.isOp (Op.OR)) {
+			Tree or = new Tree (Treetype.OP, t.getOp());
+			next();
+			or.addChild (ch);
+			or.addChild (parseL5());
+			ch = or;
+		}
+		return ch;
+	}
+
+	public Tree parseL5 () {	// and
+		Tree ch = parseL4 ();
+		while (peek().isOp (Op.AND)) {
+			Tree and = new Tree (Treetype.OP, peek().getOp());
+			next ();
+			and.addChild (ch);
+			and.addChild (parseL4());
+			ch = and;
+		}
+		return ch;
+	}
+
+	public Tree parseL4 () {	// relationals
+		Tree lhs = parseL3 ();
+		if (peek().getOp().isRelational()) {
+			Tree rel = new Tree (Treetype.OP, peek().getOp());
+			next();
+			rel.addChild (lhs);
+			rel.addChild (parseL3());
+			return rel;
+		} else {
+			return lhs;
+		}
+	}
+
+	public Tree parseL3 () {	// add and subtract
+		Tree ch = parseL2 ();
+		while (peek().isOp ("+") || peek().isOp ("-")) {
+			Tree parent = new Tree (Treetype.OP, peek().getOp());
+			next();
+			parent.addChild (ch);
+			parent.addChild (parseL2());
+			ch = parent;
+		}
+		return ch;
+	}
+
+	public Tree parseL2 () {	// multiply, divide, mod
+		Tree ch = parseL1 ();
+		while (peek().isOp ("*") || peek().isOp ("/") || peek().isOp ("%")) {
+			Tree parent = new Tree (Treetype.OP, peek().getOp());
+			next();
+			parent.addChild (ch);
+			parent.addChild (parseL1());
+			ch = parent;
+		}
+		return ch;
+	}
 
 	public Tree parseL1 () {	// unaries 
 		Tree root;
@@ -516,67 +582,6 @@ public class Parser {
 		return root;
 	}
 
-	public Tree parseL2 () {	// and
-		Tree ch = parseL1 ();
-		while (peek().isOp (Op.AND)) {
-			Tree and = new Tree (Treetype.OP, peek().getOp());
-			next ();
-			and.addChild (ch);
-			and.addChild (parseL1());
-			ch = and;
-		}
-		return ch;
-	}
-
-	public Tree parseL3 () {	// or
-		Tree ch = parseL2 ();
-		Token t = peek();
-		while (t.isOp (Op.OR)) {
-			Tree or = new Tree (Treetype.OP, t.getOp());
-			next();
-			or.addChild (ch);
-			or.addChild (parseL2());
-			ch = or;
-		}
-		return ch;
-	}
-
-	public Tree parseL4 () {	// relationals
-		Tree lhs = parseL3 ();
-		if (peek().getOp().isRelational()) {
-			Tree rel = new Tree (Treetype.OP, peek().getOp());
-			next();
-			rel.addChild (lhs);
-			rel.addChild (parseL3());
-			return rel;
-		} else {
-			return lhs;
-		}
-	}
-
-	public Tree parseL5 () {	// multiply, divide, mod
-		Tree ch = parseL4 ();
-		while (peek().isOp ("*") || peek().isOp ("/") || peek().isOp ("%")) {
-			Tree parent = new Tree (Treetype.OP, peek().getOp());
-			next();
-			parent.addChild (ch);
-			parent.addChild (parseL4());
-			ch = parent;
-		}
-		return ch;
-	}
-
-	public Tree parseExpr () {	// add and subtract
-		Tree ch = parseL5 ();
-		while (peek().isOp ("+") || peek().isOp ("-")) {
-			Tree parent = new Tree (Treetype.OP, peek().getOp());
-			next();
-			parent.addChild (ch);
-			parent.addChild (parseL5());
-			ch = parent;
-		}
-		return ch;
-	}
 
 	public Tree parseL0 () {	// and now the base-ish case.
 		if (peek().type == Tokentype.OPEN_PAREN) {

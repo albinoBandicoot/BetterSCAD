@@ -11,11 +11,15 @@ public class Smallframe {
 	}
 
 	public Datum find (String name) {
+		return entries.get(name);	// we actually want to return null when it's not here, in order to
+		// differentiate between undefined but existing and not exisiting. 
+		/*
 		Datum d = entries.get (name);
 		if (d == null) {
 			return new Undef();
 		}
 		return d;
+		*/
 	}
 
 	public void print () {

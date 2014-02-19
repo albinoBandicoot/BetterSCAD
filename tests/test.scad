@@ -1,10 +1,5 @@
-intersection () {
-	i = 12;
-	sphere (r=5);
-	sphere (r=2*i);
-	f (5);
+for (x = [4:2:8]) {
+	a = 3*x*x;
+	sphere (r=a);
 }
 
-module f () {
-	sphere (r=i);
-}

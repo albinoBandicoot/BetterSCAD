@@ -10,9 +10,9 @@ public class Test {
 		File inp = new File (args[0]);
 		Tree t = new Parser (inp).parse();
 		System.out.println(t);
-		Semantics.makeSymtables (t);
+		Tree rt = Semantics.makeSymtables (t);
 		System.out.println ("Semantics has finished");
-		System.out.println(t);
+		System.out.println(rt);
 		Interpreter i = new Interpreter (t);
 		Node n = i.run ();
 		System.out.println ("Execution complete; CSG tree is \n" + n);

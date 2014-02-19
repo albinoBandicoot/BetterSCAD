@@ -26,9 +26,9 @@ public class Bigframe {
 	}
 
 	public Datum findDeep (String name) {
-		Datum d = new Undef ();
+		Datum d = null;
 		int i = stack.size()-1;
-		while (d.isUndef()) {
+		while (d == null) {
 			if (i == -1) {
 				return base.find (name);
 			} else {
