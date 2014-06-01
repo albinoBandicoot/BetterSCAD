@@ -7,8 +7,10 @@ public abstract class Node {
 
 	public abstract double csg (Float3 pt);
 
+	public abstract Node copy ();
+
 	public final boolean onSurface (Float3 pt) {
-		return Math.abs(csg(pt)) < 1e-8;
+		return Math.abs(csg(pt)) < 1e-6;
 	}
 
 	public boolean intersects (Ray r) {	// for speed, subclasses may want to override this method.
@@ -17,8 +19,18 @@ public abstract class Node {
 
 	public Intersection intersection (Ray r) {
 		ArrayList<Intersection> ipts = allIntersections (r);
-		// get closest and return it.
-		return null;
+		if (ipts.isEmpty()) return Intersection.NONE;
+		if (ipts.size() == 1) return ipts.get(0);
+
+		Intersection res = null;
+		double mint = 123456789;
+		for (Intersection i : ipts) {
+			if (i.t < mint) {
+				mint = i.t;
+				res = i;
+			}
+		}
+		return res;
 	}
 
 	public abstract ArrayList<Intersection> allIntersections (Ray r);

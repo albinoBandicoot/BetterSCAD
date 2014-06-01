@@ -12,6 +12,7 @@ fi
 
 javac common/*.java
 javac frontend/*.java
+javac render/*.java
 
 if [ $# -ge 1 ]
 then

@@ -16,6 +16,10 @@ public class  CSG extends Node {
 		this.type = type;
 	}
 
+	public Node copy () {
+		return new CSG (type);
+	}
+
 	public CSG (String typename) {
 		String n = typename.toLowerCase();
 		if (n.equals ("union")) {

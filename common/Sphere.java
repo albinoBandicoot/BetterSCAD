@@ -14,6 +14,10 @@ public class  Sphere extends Node {
 		this.rad = r;
 	}
 
+	public Node copy () {
+		return new Sphere (rad);
+	}
+
 	public double csg (Float3 p) {
 		return p.mag() - rad;
 	}

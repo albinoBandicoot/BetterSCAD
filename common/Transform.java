@@ -2,14 +2,20 @@ package common ;
 public class Transform {
 
 	public Float3 transformPoint (Float3 pt) {
-		return null;
+		return new Float3 (mat[0][0]*pt.x + mat[0][1]*pt.y + mat[0][2]*pt.z + mat[0][3],
+						   mat[1][0]*pt.x + mat[1][1]*pt.y + mat[1][2]*pt.z + mat[1][3],
+						   mat[2][0]*pt.x + mat[2][1]*pt.y + mat[2][2]*pt.z + mat[2][3]);
 	}
 	public Float3 transformVec   (Float3 vec) {
-		return null;
+		return new Float3 (mat[0][0]*vec.x + mat[0][1]*vec.y + mat[0][2]*vec.z,
+						   mat[1][0]*vec.x + mat[1][1]*vec.y + mat[1][2]*vec.z,
+						   mat[2][0]*vec.x + mat[2][1]*vec.y + mat[2][2]*vec.z);
 	}
 
 	public Ray transformRay (Ray r) {
-		return new Ray (transformPoint (r.start), transformVec (r.dir));
+		Ray res = new Ray (transformPoint (r.start), transformVec (r.dir));
+//		System.out.println ("Transforming " + r + " to " + res);
+		return res;
 	}
 
 	private double[][] mat;
@@ -20,6 +26,15 @@ public class Transform {
 
 	public Transform () {
 		mat = identity ();
+	}
+
+	public Transform (Transform other) {
+		mat = new double[4][4];
+		for (int i=0; i<4; i++){
+			for (int j=0; j<4; j++) {
+				mat[i][j] = other.mat[i][j];
+			}
+		}
 	}
 
 	private static double[][] identity () {
@@ -77,6 +92,65 @@ public class Transform {
 			}
 		}
 		return new Transform (m);
+	}
+
+	private void prmat (double[][] m) {
+		for (int i=0; i<4; i++) {
+			for (int j=0; j<8; j++) {
+				System.out.print (m[i][j] + "  ");
+			}
+			System.out.println();
+		}
+	}
+
+	public Transform invert () {
+		double[][] m = new double[4][8];
+		for (int i=0; i<4; i++) {
+			for (int j=0; j<8; j++) {
+				if (j < 4) {
+					m[i][j] = this.mat[i][j];
+				} else {
+					m[i][j] = (i == (j-4)) ? 1 : 0;
+				}
+			}
+		}
+		// Gaussian elimination:
+		// forward direction
+		for (int col = 0; col < 4; col ++) {
+			for (int row = col+1; row < 4; row++) {
+				double scale = -m[row][col] / m[col][col];
+				// add row 'col' multiplied by scale to this row, cancelling out the leading entry.
+				for (int x=0; x<8; x++) {
+					m[row][x] += scale*m[col][x];
+				}
+			}
+			// scale row so it has a leading 1
+			double sc = 1.0/m[col][col];
+			for (int x=0; x<8; x++) {
+				m[col][x] *= sc;
+			}
+		}
+		// backward direction
+		for (int c=3; c>=0; c--) {
+			for (int r = c-1; r >= 0; r--) {
+				double scale = -m[r][c];
+				// add row 'c' multiplied by scale to row 'r'
+				for (int x=0; x<8; x++) {
+					m[r][x] += scale*m[c][x];
+				}
+			}
+		}
+		// copy over the right hand 4x4 submatrix
+		double[][] dat = new double[4][4];
+		double[][] CHECK = new double[4][4];	// this should end up being the identity matrix
+		for (int i=0; i<4; i++) {
+			for (int j=0; j<4; j++) {
+				dat[i][j] = m[i][j+4];
+				CHECK[i][j] = m[i][j];
+			}
+		}
+		System.out.println ("INVLHS = " + (new Transform (CHECK)).toString());
+		return new Transform (dat);
 	}
 
 	public String toString () {

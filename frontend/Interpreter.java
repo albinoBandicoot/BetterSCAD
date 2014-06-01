@@ -148,9 +148,9 @@ public class Interpreter {
 					popSmall();
 				}
 			} else if (v.type == Treetype.RANGE){ 
-				double start = (Double) v.children.get(0).data;
-				double end = (Double) v.children.get(1).data;
-				double inc = (Double) v.children.get(2).data;
+				double start = ((Scalar) evalExpr(v.children.get(0))).d;
+				double end = ((Scalar) evalExpr(v.children.get(1))).d;
+				double inc = ((Scalar) evalExpr(v.children.get(2))).d;
 				if (inc == 0 || (end-start)/inc < 0) {
 					// bad range
 					error ("Bad range");
@@ -421,8 +421,9 @@ public class Interpreter {
 				return null;
 			}
 			Node e = new Extrude (((Scalar) h).d);
-			e.left = makeExplicit (children, CSG.UNION);
-			return e;
+			return inject (children, e, CSG.UNION);
+//			e.left = makeExplicit (children, CSG.UNION);
+//			return e;
 		} else if (n.equals ("rotate_extrude")) {
 			Node r = new Revolve ();
 			r.left = makeExplicit (children, CSG.UNION);
@@ -436,13 +437,64 @@ public class Interpreter {
 				System.err.println ("ERROR: non-scalar sphere radius");
 			}
 			return null;
-		/*
-		} else if (n.equals ("square")) {
-		} else if (n.equals ("polygon")) {
+
 		} else if (n.equals ("circle")) {
-		} else if (n.equals ("cube")) {
-		} else if (n.equals ("cylinder")) {
+			Datum d = findVar ("r");
+			if (d instanceof Scalar) {
+				return new Circle (((Scalar) d).d);
+			} else {
+				error ("Expecting scalar circle radius");
+			}
+			return null;
+
+		/*
+		} else if (n.equals ("polygon")) {
 		*/
+		} else if (n.equals ("square")) {
+		} else if (n.equals ("cube")) {		// linear extrude a square
+			Datum size = findVar ("size");
+			Datum cent = findVar ("center");
+			Float3 s = new Float3();
+			if (size instanceof Scalar) {
+				double dim = ((Scalar) size).d;
+				s = new Float3 (dim, dim, dim);
+			} else if (size instanceof Vec) {
+				s = ((Vec) size).getFloat3();
+			} else {
+				error ("Cube size must be either a scalar or a vector");
+			}
+			Rectangle rect = new Rectangle (s.x, s.y);
+			Extrude e = new Extrude (s.z);
+			e.left = rect;
+
+			if (cent.isTrue()) {
+				TransformNode c = new TransformNode (Transform.makeTranslate (s.mul(-0.5)));
+				c.left = e;
+				return c;
+			} else {
+				return e;
+			}
+
+		} else if (n.equals ("cylinder")) {	// linear extrude a circle
+			Datum h = findVar ("h");
+			Datum r = findVar ("r");
+			Datum cent = findVar ("center");
+			// Datum r2 = findVar ("r2");	// TODO: implement tapered cylinders
+			if (h instanceof Scalar && r instanceof Scalar) {
+				Circle c = new Circle (((Scalar) r).d);
+				Extrude e = new Extrude (((Scalar) h).d);
+				e.left = c;
+				if (cent.isTrue()) {
+					TransformNode ce = new TransformNode (Transform.makeTranslate (new Float3 (0,0,-e.h/2)));
+					ce.left = e;
+					return ce;
+				} else {
+					return e;
+				}
+			} else {
+				error ("Cylinder height and radii must be scalars");
+			}
+
 		} else if (n.equals ("translate")) {
 			Datum d = findVar ("v");
 			if (d instanceof Vec) {
@@ -482,10 +534,12 @@ public class Interpreter {
 		} else if (n.equals ("rotate")) {
 			Datum ad = findVar ("a");
 			Datum vd = findVar ("v");
+			/*
 			if (! (vd instanceof Vec)) {
 				error ("Rotate expects a vector for its axis");
 				return null;
 			}
+			*/
 			if (ad instanceof Vec) {	// x, y, z angles
 				if (! ((Vec) ad).isFlat()) {
 					error ("Rotate given a non-flat x,y,z angle vector");
@@ -566,6 +620,36 @@ public class Interpreter {
 		}
 		c.left = nodes.get(i);
 		c.right = nodes.get(i+1);
+		return top;
+	}
+
+	/* Does a very similar thing to makeExplicit, except it injects a copy of 'op'
+	 * as a parent of each node in 'nodes' before adding it. This is useful for converting,
+	 * say, an extrude of a union to a union of extrudes. */
+	private Node inject (ArrayList<Node> nodes, Node op, int type) {
+		if (nodes.isEmpty()) return null;
+		if (nodes.size() == 1) {
+			op.left = nodes.get(0);
+			return op;
+		}
+		CSG top = new CSG (type);
+		CSG c = top;
+		int i = 0;
+		while (i < nodes.size() - 2) {
+			Node copy_op = op.copy();
+			copy_op.left = nodes.get(i);
+			c.left = copy_op;
+			CSG n = new CSG (type);
+			c.right = n;
+			c = n;
+			i++;
+		}
+		Node op1 = op.copy();
+		Node op2 = op.copy();
+		op1.left = nodes.get(i);
+		op2.left = nodes.get(i+1);
+		c.left = op1;
+		c.right = op2;
 		return top;
 	}
 

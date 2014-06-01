@@ -98,7 +98,11 @@ public class Float3 {
 		return new Float3 (rx, ry, rz);
 	}	
 
-	public int getRGB () {
+	public java.awt.Color getColor () {
+		return new java.awt.Color ((float) x, (float) y, (float) z);
+	}
+
+	public int getImgRGB () {
 		return 256*256*((int) (x*255)) + 256*((int) (y*255)) + (int) (z*255);
 	}
 

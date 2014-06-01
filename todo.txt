@@ -1,29 +1,40 @@
+Parser:
 - implement the shorthand syntax for nested for loops
-- implement the runtimes/interpreter
 
-- internals:
-	- matrix inversion
-	- transform points and vecs
-	- normalize the tree
-	- implement extrusion int test
-	- implement revolves
-		- how? by knowing the forms of all primitives? or some other way?
-			- do we need to figure out ray-ellipsoidal-torus intersection?
-		
-	- implement polygon
-	- how do bounding boxes work with the transformations?
-	- some tree manipulation is needed:
-		- move CSG ops of 2D objects outside their 3D generators
-		- what about transforms? These get interesting. 
-			- revolves have to keep their internal transforms
-			- extrudes can have scales and translates factored out, but rotates...
-				- do we actually support the projection behavior of rotates inside extrudes?
-	- don't forget about rendering modifiers (*#!%) 
-	- getting normals to all objects
-		- is it better to compute for all intersections, or recompute for the final one?
+Interpreter / internal representation:
+- sort out the global variables in used files issue
+- finish implementing node generation
+- write the intersection tests
+- much testing needed
+ 
+- polygon
+- revolve
+- extrude
 
-- rendering engine
-- GUI
-	- editor
-- slicer
+- tree normalization
+	- can move CSG ops of 2D objects outside their 3D generators; is this good? probably not, actually. It's probably better to spend more time in 2D-land.
+		- however, it could make doing revolves easier to lift them out, depending on how they're implemented.
+	- revolves must keep internal transforms, but extrudes can move them outside, except for rotate.
+	- speaking of rotate, OpenSCAD uses the projection of the rotation as the 2D object to extrude/revolve. Can we support this?
+	- incorporate rendering modifiers here?
+
+- tree optimization
+	- makeExplicit creates trees that are basically linked lists. Moving nodes in a more balanced fashion could help rendering times.
+
+- how do bounding boxes work with the transformations?
+
+Renderer:
+- getting normals to all objects
+	- is it better to compute for all intersections, or recompute for the final one? 
+		- can just do the final one and use numerical differentiation on the csg function.
+
+GUI:
+- Editor
+	- can we use a pre-existing Java component, or should we make our own?
+	- syntax highlighting is good
+	- need to integrate parser errors with editor display
+	- autoindent would be nice
+
+General: 
+- figure out ERROR HANDLING
 

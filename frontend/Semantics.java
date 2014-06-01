@@ -20,8 +20,8 @@ public class Semantics {
 		
 		// now add all of the predefined modules and functions
 		String[] modules = {"union", "intersection", "difference", "assign", "square", "circle", "polygon", "cube", "cylinder", "sphere", "linear_extrude", "rotate_extrude", "translate", "scale", "rotate", "mirror", "multmatrix", "color"};
-		String[][] mparam = {{}, {}, {}, {}, {"size", "center"}, {"r", "center"}, {"points", "paths", "convexity"}, {"size", "center"}, {"r", "h", "center"}, {"r", "center"}, {"height", "center", "convexity", "twist", "slices", "scale"}, {"convexity"}, {"v"}, {"v"}, {"a", "v"}, {"v"}, {"m"}, {"c", "alpha"}};
-		Datum[][] mdefaults = {{}, {}, {}, {}, {new Scalar(1), new Scalar (0)}, {new Scalar(1), new Scalar(0)}, {new Undef(), new Undef(), new Scalar(5)}, {new Scalar(1), new Scalar(0)}, {new Scalar(1), new Scalar(1), new Scalar(0)}, {new Scalar(1), new Scalar(0)}, {new Scalar(1), new Scalar(0), new Scalar(5), new Scalar(0), new Undef(), new Scalar(1)}, {new Scalar(5)}, {new Vec(0,0,0)}, {new Vec(1,1,1)}, {new Vec(0,0,0), new Undef()}, {new Vec(1,0,0)}, {new Vec(new Vec(1,0,0), new Vec(0,1,0), new Vec(0,0,1))}, {new Vec(0.8, 0.8, 0), new Scalar(1)}};
+		String[][] mparam = {{}, {}, {}, {}, {"size", "center"}, {"r"}, {"points", "paths", "convexity"}, {"size", "center"}, {"h", "r", "r2", "center"}, {"r"}, {"height", "center", "convexity", "twist", "slices", "scale"}, {"convexity"}, {"v"}, {"v"}, {"a", "v"}, {"v"}, {"m"}, {"c", "alpha"}};
+		Datum[][] mdefaults = {{}, {}, {}, {}, {new Scalar(1), new Bool(false)}, {new Scalar(1)}, {new Undef(), new Undef(), new Scalar(5)}, {new Scalar(1), new Bool(false)}, {new Scalar(1), new Scalar(1), new Scalar(1), new Bool(false)}, {new Scalar(1)}, {new Scalar(1), new Scalar(0), new Scalar(5), new Scalar(0), new Undef(), new Scalar(1)}, {new Scalar(5)}, {new Vec(0,0,0)}, {new Vec(1,1,1)}, {new Vec(0,0,0), new Undef()}, {new Vec(1,0,0)}, {new Vec(new Vec(1,0,0), new Vec(0,1,0), new Vec(0,0,1))}, {new Vec(0.8, 0.8, 0), new Scalar(1)}};
 		String[] functions = {"cos", "sin", "tan", "acos", "asin", "atan", "atan2", "abs", "ceil", "exp", "floor", "ln", "len", "log", "lookup", "max", "min", "norm", "pow", "rands", "round", "sign", "sqrt", "str"};
 
 		for (int i=0; i<modules.length; i++) {
@@ -80,7 +80,7 @@ public class Semantics {
 		} else if (d instanceof Str) {
 			return new Tree (Treetype.SLIT, ((Str) d).data);
 		} else if (d instanceof Bool) {
-			// TODO: I guess we need boolean trees also.
+			return new Tree (Treetype.BLIT, ((Bool) d).val);
 		}
 		return null;
 	}

@@ -5,6 +5,10 @@ public class  Revolve extends Node {
 	public Revolve () {
 	}
 
+	public Node copy () {
+		return new Revolve();
+	}
+
 	public double csg (Float3 pt) {
 		return 1;
 	}
