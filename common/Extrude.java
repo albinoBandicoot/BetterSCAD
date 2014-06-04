@@ -20,35 +20,36 @@ public class  Extrude extends Node {
 	public double csg (Float3 pt) {
 		double r = left.csg (pt);
 		double z = 0;
-		if (pt.z < 0) {
+		if (pt.z < h/2) {
 			z = -pt.z;
-		} else if (pt.z > h) {
-			z = pt.z - h;
-		} else if (pt.z < h/2) {
-			z = pt.z;
 		} else {
 			z = pt.z - h;
 		}
 		return Math.max (z, r);
 	}
 
-	public ArrayList<Intersection> allIntersections (Ray r) {
-		ArrayList<Intersection> icyl = ((Node2D) left).allContourIntersections(r);
-		Intersection topi = Intersection.build (r, h, this);
-		Intersection boti = Intersection.build (r, 0, this);
-		if (topi != Intersection.NONE) {
-			icyl.add (topi);
-		}
-		if (boti != Intersection.NONE) {
-			icyl.add (boti);
-		}
-		for (int i=icyl.size()-1; i >= 0; i--) {
-			double csgval = csg (r.get (icyl.get(i).t));
+	public int findIptsMax () {
+		return 2 + left.findIptsMax();
+	}
+
+	public void allIntersections (IList il, Ray r) {
+		int ninter = ((Node2D) left).allContourIntersections (il, r);
+		int deleted = 0;
+		for (int i=0; i<ninter; i++) {
+			double csgval = csg (r.get (il.ints[il.n - i - 1].t));
 			if (csgval - 1e-8 > 0) {
-				icyl.remove(i);
+				il.ints[il.n - i - 1] = null;
+				deleted ++;
 			}
 		}
-		return icyl;
+		Intersection topi = Intersection.build (r, h, this);
+		Intersection boti = Intersection.build (r, 0, this);
+		if (topi != null && onSurface (r.get(topi.t))) {
+			il.add (topi);
+		}
+		if (boti != null && onSurface (r.get(boti.t))) {
+			il.add (boti);
+		}
 	}
 
 

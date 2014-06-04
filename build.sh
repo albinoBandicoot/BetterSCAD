@@ -10,9 +10,7 @@ then
 	fi
 fi
 
-javac common/*.java
-javac frontend/*.java
-javac render/*.java
+javac common/*.java frontend/*.java render/*.java gui/*.java
 
 if [ $# -ge 1 ]
 then

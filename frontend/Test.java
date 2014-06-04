@@ -11,7 +11,7 @@ public class Test {
 
 	public static void main (String[] args) throws IOException {
 		File inp = new File (args[0]);
-		Tree t = new Parser (inp).parse();
+		Tree t = new Parser (inp, "", true).parse();
 		System.out.println(t);
 		Tree rt = Semantics.makeSymtables (t);
 		System.out.println ("Semantics has finished");
@@ -19,9 +19,11 @@ public class Test {
 		Interpreter i = new Interpreter (t);
 		Node n = i.run ();
 		System.out.println ("Execution complete; CSG tree is \n" + n);
+		/*
 		Scene s = new Scene (n);
 		BufferedImage img = new BufferedImage (200, 200, 1);
 		Raytrace.render (s, img);
 		ImageIO.write (img, "png", new File (args[1]));
+		*/
 	}
 }

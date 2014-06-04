@@ -13,8 +13,11 @@ public class  Revolve extends Node {
 		return 1;
 	}
 
-	public ArrayList<Intersection> allIntersections (Ray r) {
-		return null;
+	public int findIptsMax () {
+		return 2*left.findIptsMax();	// this is just a guess that feels right.
+	}
+
+	public void allIntersections (IList il, Ray r) {
 	}
 
 	public String getString () {

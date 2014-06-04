@@ -108,7 +108,10 @@ public class Interpreter {
 	}
 
 	public Node run () {
-		return run (root);
+		Node n = run (root);
+		smushTransforms (n);
+		buildParentPointers (n);
+		return n;
 	}
 
 	private void printStack () {
@@ -409,10 +412,13 @@ public class Interpreter {
 		} else if (n.equals ("intersection")) {
 			return makeExplicit (children, CSG.INTERSECTION);
 		} else if (n.equals ("difference")) {
+			Node u = makeExplicit (children, CSG.DIFFERENCE);
+			/*
 			Node u = new CSG (CSG.DIFFERENCE);
 			u.left = children.get(0);
 			children.remove (0);
 			u.right = makeExplicit (children, CSG.UNION);
+			*/
 			return u;
 		} else if (n.equals ("linear_extrude")) {
 			// TODO: get the parameters in; may involve creating a transform for a tapered extrusion, or whatever we do for twisted extrudes.`
@@ -485,6 +491,7 @@ public class Interpreter {
 				Extrude e = new Extrude (((Scalar) h).d);
 				e.left = c;
 				if (cent.isTrue()) {
+					System.out.println ("CENTERED CYLINDER");
 					TransformNode ce = new TransformNode (Transform.makeTranslate (new Float3 (0,0,-e.h/2)));
 					ce.left = e;
 					return ce;
@@ -556,9 +563,13 @@ public class Interpreter {
 				return tn;
 
 			} else if (ad instanceof Scalar) {	// angle around axis v
-				TransformNode tn = new TransformNode (Transform.makeRotate (((Vec) vd).getFloat3(), ((Scalar) ad).d));
-				tn.left = makeExplicit (children, CSG.UNION);
-				return tn;
+				if (vd instanceof Vec) {
+					TransformNode tn = new TransformNode (Transform.makeRotate (((Vec) vd).getFloat3(), ((Scalar) ad).d));
+					tn.left = makeExplicit (children, CSG.UNION);
+					return tn;
+				} else {
+					error ("Expecting vector for rotation");
+				}
 			}
 			error ("Rotate expects either a scalar or a flat vector for its angle");
 			return null;
@@ -609,6 +620,10 @@ public class Interpreter {
 		if (nodes.isEmpty()) return null;
 		if (nodes.size() == 1) return nodes.get(0);
 		CSG top = new CSG (type);
+		top.children = new Node[nodes.size()];
+		top.children = nodes.toArray(top.children);
+		return top;
+		/*
 		CSG c = top;
 		int i = 0;
 		while (i < nodes.size() - 2) {
@@ -621,6 +636,7 @@ public class Interpreter {
 		c.left = nodes.get(i);
 		c.right = nodes.get(i+1);
 		return top;
+		*/
 	}
 
 	/* Does a very similar thing to makeExplicit, except it injects a copy of 'op'
@@ -633,6 +649,17 @@ public class Interpreter {
 			return op;
 		}
 		CSG top = new CSG (type);
+		top.children = new Node[nodes.size()];
+		int i = 0;
+		for (Node n : nodes) {
+			Node copy_op = op.copy();
+			copy_op.left = nodes.get(i);
+			top.children[i] = copy_op;
+			i++;
+		}
+		return top;
+
+		/*
 		CSG c = top;
 		int i = 0;
 		while (i < nodes.size() - 2) {
@@ -651,6 +678,46 @@ public class Interpreter {
 		c.left = op1;
 		c.right = op2;
 		return top;
+		*/
+	}
+
+	public void smushTransforms (Node n) {
+		if (n instanceof TransformNode) {
+			if (n.left instanceof TransformNode) {
+				smushTransforms (n.left);
+				TransformNode tnl = (TransformNode) n.left;
+				TransformNode tn = (TransformNode) n;
+				tn.xform = tnl.xform.append (tn.xform);
+				tn.inverse = tnl.inverse.append (tn.inverse);
+				n.left = n.left.left;
+			}
+		} else if (n instanceof CSG) {
+			CSG c = (CSG) n;
+			for (int i=0; i<c.children.length; i++) {
+				smushTransforms (c.children[i]);
+			}
+		} else {
+			if (n.left != null) smushTransforms (n.left);
+			if (n.right != null) smushTransforms (n.right);
+		}
+	}
+	
+	public void buildParentPointers (Node n) {
+		if (n.left != null) {
+			n.left.parent = n;
+			buildParentPointers (n.left);
+		}
+		if (n.right != null) {
+			n.right.parent = n;
+			buildParentPointers (n.right);
+		}
+		if (n instanceof CSG) {
+			CSG c = (CSG) n;
+			for (int i=0; i<c.children.length; i++) {
+				c.children[i].parent = c;
+				buildParentPointers (c.children[i]);
+			}
+		}
 	}
 
 }

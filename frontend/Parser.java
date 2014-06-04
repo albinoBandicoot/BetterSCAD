@@ -16,9 +16,17 @@ public class Parser {
 		includes.clear();
 	}
 
-	public Parser (File f) {
-		includes.add (f.getAbsolutePath());
-		Lexer lex = new Lexer (f);
+	public Parser (File f, String str, boolean from_file) {
+		/* If from_file is true, it will read from the file, otherwise
+		 * it will use the given string. The file is still used to determine
+		 * relative include paths */
+		if (f != null) includes.add (f.getAbsolutePath());
+		Lexer lex = null;
+		if (from_file) {
+	  		lex = new Lexer (f);
+		} else {
+			lex = new Lexer (str);
+		}
 		tokens = lex.tokenize();
 		tokens.add (new Token (Tokentype.EOF, -1));
 		int ct = 0;
@@ -27,8 +35,12 @@ public class Parser {
 			ct ++;
 		}
 		i = 0;
-		sourcefile = f.getAbsoluteFile();
-		sourcedir = new File (sourcefile.getParent());
+		if (f != null) {
+			sourcefile = f.getAbsoluteFile();
+			sourcedir = new File (sourcefile.getParent());
+		} else {
+			sourcedir = new File ("./");
+		}
 	}
 
 	public void error (String message) {
@@ -95,7 +107,7 @@ public class Parser {
 				} else if (includes.contains(f.getAbsolutePath())) {
 					nferror ("Include cycle detected with file " + peek().val);
 				} else {
-					Tree t = new Parser (f).parse();
+					Tree t = new Parser (f, null, true).parse();
 					root.addChildAll (t.children);
 				}
 				next();
@@ -106,7 +118,7 @@ public class Parser {
 				} else if (includes.contains(f.getAbsolutePath())) {
 					nferror ("Include cycle detected with file " + peek().val);
 				} else {
-					Tree subfile = new Parser(f).parse();
+					Tree subfile = new Parser(f, null, true).parse();
 					for (int q=0; q<subfile.children.size(); q++) {
 						Tree ch = (Tree) subfile.children.get(q);	// for some reason the compiler thinks that the contents of the children list are Objects, not Trees.
 						if (ch.type == Treetype.MODULE || ch.type == Treetype.FUNCTION) {

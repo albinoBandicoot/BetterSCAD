@@ -22,6 +22,10 @@ public class  Sphere extends Node {
 		return p.mag() - rad;
 	}
 
+	public int findIptsMax () {
+		return 2;
+	}
+
 	/* This only returns the first (closest) positive intersection with the sphere, or null if there is no 
 	 * intersection with a positive t value */
 	public Intersection intersection (Ray r) {
@@ -43,24 +47,22 @@ public class  Sphere extends Node {
 		return null;
 	}
 
-	public ArrayList<Intersection> allIntersections (Ray r) {
-		ArrayList<Intersection> ipts = new ArrayList<Intersection>();
+	public void allIntersections (IList il, Ray r) {
 		Float3 omc = r.start;
 		double b = r.dir.dot (omc);
 		double c = omc.dot(omc) - rad*rad;
 		if (b*b - c < 0) {
-			return ipts;
+			return;
 		}
 		double d = Math.sqrt (b*b-c);
 		double t0 = -b + d;
 		double t1 = -b - d;
 		if (t1 > 0) {
-			ipts.add (new Intersection(t1, this));
+			il.add (new Intersection(t1, this));
 		}
 		if (t0 > 0) {
-			ipts.add (new Intersection (t0, this));
+			il.add (new Intersection (t0, this));
 		}
-		return ipts;
 	}
 
 	public String getString () {

@@ -8,6 +8,8 @@ public class  CSG extends Node {
 
 	public int type;
 
+	public Node[] children;
+
 	public CSG () {
 		type = UNION;
 	}
@@ -35,6 +37,20 @@ public class  CSG extends Node {
 	}
 
 	public double csg (Float3 pt) {
+		double res = (type == UNION) ? 1e20 : -1e20;
+		for (int i=0; i<children.length; i++) {
+			double c = children[i].csg (pt);
+			switch (type) {
+				case UNION:
+					res = Math.min (res, c);	break;
+				case INTERSECTION:
+					res = Math.max (res, c);	break;
+				case DIFFERENCE:
+					res = Math.max (res, i==0 ? c : -c);
+			}
+		}
+		return res;
+		/*
 		switch (type) {
 			case UNION:
 				return Math.min (left.csg(pt), right.csg(pt));
@@ -43,24 +59,35 @@ public class  CSG extends Node {
 			case DIFFERENCE:
 				return Math.max (left.csg(pt), -right.csg(pt));
 		}
-		return 1;
+		*/
 	}
 
-	public ArrayList<Intersection> allIntersections (Ray r) {
-		ArrayList<Intersection> left_inter = left.allIntersections(r);
-		ArrayList<Intersection> right_inter = right.allIntersections(r);
-		ArrayList<Intersection> res = new ArrayList<Intersection>();
-		for (Intersection i : left_inter) {
-			if (onSurface (r.get(i.t))) {
-				res.add (i);
+	public int findIptsMax () {
+		int ct = 0;
+		for (int i=0; i<children.length; i++) {
+			ct += children[i].findIptsMax();
+		}
+		return ct;
+
+	//	return left.findIptsMax() + right.findIptsMax();
+	}
+
+	public void allIntersections (IList il, Ray r) {
+		for (int i=0; i<children.length; i++) {
+			children[i].allIntersections (il, r);
+		}
+		/*
+		left.allIntersections(il, r);
+		right.allIntersections(il, r);
+		*/
+		/*
+		int nsave = il.n;
+		for (int i=nsave; i<il.n; i++) {
+			if (il.ints[i] != null && !onSurface (r.get(il.ints[i].t))) {
+				il.ints[i] = null;
 			}
 		}
-		for (Intersection i : right_inter) {
-			if (onSurface (r.get(i.t))) {
-				res.add (i);
-			}
-		}
-		return res;
+		*/
 	}
 
 	public String getString () {

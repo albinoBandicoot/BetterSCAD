@@ -20,12 +20,12 @@ public class TransformNode extends Node {
 		return left.csg (inverse.transformPoint (pt));
 	}
 
-	public Intersection intersection (Ray r) {
-		return left.intersection (inverse.transformRay (r));
+	public int findIptsMax () {
+		return left.findIptsMax();
 	}
 
-	public ArrayList<Intersection> allIntersections (Ray r) {
-		return left.allIntersections (inverse.transformRay (r));
+	public void allIntersections (IList il, Ray r) {
+		left.allIntersections (il, inverse.transformRay (r));
 	}
 
 	public String getString () {

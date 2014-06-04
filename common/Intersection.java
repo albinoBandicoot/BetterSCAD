@@ -1,5 +1,5 @@
 package common;
-public class Intersection {
+public class Intersection implements Comparable {
 
 	public double t;
 	public Node obj;
@@ -23,8 +23,21 @@ public class Intersection {
 		if (Math.abs(r.dir.z) > 1e-8) {
 			return new Intersection ((z - r.start.z) / r.dir.z, n);
 		} else {
-			return NONE;
+			return null;
 		}
 	}
 
+	public int compareTo (Object other) {
+		if (other instanceof Intersection) {
+			Intersection i = (Intersection) other;
+			if (t == i.t) return 0;
+			if (t < i.t) return -1;
+			return 1;
+		}
+		return -1;
+	}
+
+	public String toString () {
+		return "Int @ t = " + t;
+	}
 }

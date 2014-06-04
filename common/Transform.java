@@ -61,7 +61,9 @@ public class Transform {
 		return new Transform (m);
 	}
 
-	public static Transform makeRotate (Float3 r, double t) {	// rotate about arbitrary axis r by t radians
+	public static Transform makeRotate (Float3 r, double t) {	// rotate about arbitrary axis r by t degrees
+		// first convert to radians
+		t *= Math.PI/180;
 		r = r.normalize();
 		/* See page 71 of Real-Time Rendering by Moeller, Haines, and Hoffman. */
 		double[][] m = identity();

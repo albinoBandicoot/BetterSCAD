@@ -3,37 +3,56 @@ import java.util.ArrayList;
 
 public abstract class Node {
 
-	public Node left, right;
+	public Node left, right, parent;
 
 	public abstract double csg (Float3 pt);
 
 	public abstract Node copy ();
 
+	public abstract int findIptsMax ();
+
 	public final boolean onSurface (Float3 pt) {
 		return Math.abs(csg(pt)) < 1e-6;
 	}
 
-	public boolean intersects (Ray r) {	// for speed, subclasses may want to override this method.
-		return intersection (r) != null;	// or could be allIntersections (r).size() > 0
-	}
+	public final Intersection intersection (IList il, Ray r) {
+		il.clear();
+		allIntersections (il, r);
 
-	public Intersection intersection (Ray r) {
-		ArrayList<Intersection> ipts = allIntersections (r);
-		if (ipts.isEmpty()) return Intersection.NONE;
-		if (ipts.size() == 1) return ipts.get(0);
+		/*
+		Intersection[] ints = il.getSorted();
+		il.n = 0;
+		if (ints.length == 0) return Intersection.NONE;
+		int idx = 0;
+		while (idx < ints.length && !onSurface (r.get(ints[idx].t))) {
+			il.csg_ct ++;
+			idx ++;
+		}
+		if (idx == ints.length) return Intersection.NONE;
+		return ints[idx];
+		*/
 
 		Intersection res = null;
 		double mint = 123456789;
-		for (Intersection i : ipts) {
-			if (i.t < mint) {
-				mint = i.t;
-				res = i;
+		
+		for (int x=0; x<il.n; x++) {
+			Intersection i = il.ints[x];
+			if (i != null && i.t < mint) {
+				if (onSurface (r.get(i.t))) {
+					il.csg_ct ++;
+					mint = i.t;
+					res = i;
+				}
 			}
+		}
+		il.n = 0;	// very important to reset!
+		if (res == null) {
+			return Intersection.NONE;
 		}
 		return res;
 	}
 
-	public abstract ArrayList<Intersection> allIntersections (Ray r);
+	public abstract void allIntersections (IList il, Ray r);
 
 	// something for the plane intersection; perhaps there should be an interface that gives a closed-form curve for the plane intersection that a subset of the nodes implement.
 	

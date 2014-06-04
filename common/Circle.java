@@ -21,34 +21,36 @@ public class  Circle extends Node2D {
 		return Math.sqrt(pt.x*pt.x + pt.y*pt.y) - rad;
 	}
 
-	public ArrayList<Intersection> allIntersections (Ray r) {
-		ArrayList<Intersection> ipts = new ArrayList<Intersection>();
-		Intersection i = Intersection.build (r, 0, this);
-		Float3 ipt = r.get (i.t);
-		if (i != Intersection.NONE && csg (ipt) < 0) {
-			ipts.add (i);
-		}
-		return ipts;
+	public int findIptsMax () {
+		return 2;
 	}
 
-	public ArrayList<Intersection> allContourIntersections (Ray r) {
+	public void allIntersections (IList il, Ray r) {
+		Intersection i = Intersection.build (r, 0, this);
+		if (i != null) {
+			Float3 ipt = r.get (i.t);
+			if (csg (ipt) < 0) {
+				il.add (i);
+			}
+		}
+	}
+
+	public int allContourIntersections (IList il, Ray r) {
 		/* Ripped pretty much directly out of 'Real-Time Rendering' page 741. */
-		ArrayList<Intersection> ipts = new ArrayList<Intersection>();
 		Float3 l = new Float3 (-r.start.x, -r.start.y, 0);
 		Float3 d = new Float3 (r.dir.x, r.dir.y, 0);
-		if (d.mag() < 1e-6) return ipts;
+		if (d.mag() < 1e-6) return 0;
 		double dmag = d.mag();
 		d = d.normalize();
 		double s = l.dot(d);
 		double lsq = l.dot(l);
-		if (s < 0 && lsq > rad*rad) return ipts;
+		if (s < 0 && lsq > rad*rad) return 0;
 		double msq = lsq - s*s;
-		if (msq > rad*rad) return ipts;
+		if (msq > rad*rad) return 0;
 		double q = Math.sqrt (rad*rad - msq);
-		ipts.add (new Intersection ((s-q) / dmag, this, true));
-		ipts.add (new Intersection ((s+q) / dmag, this, true));
-		System.out.println("\tcontour t pair = " + (s-q) + ", " + (s+q));
-		return ipts;
+		il.add (new Intersection ((s-q) / dmag, this, true));
+		il.add (new Intersection ((s+q) / dmag, this, true));
+		return 2;
 	}
 
 	/*
