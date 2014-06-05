@@ -27,6 +27,10 @@ public class Float3 {
 		return new Float3 (x*d, y*d, z*d);
 	}
 
+	public Float3 mul (Float3 other) {
+		return new Float3 (x*other.x, y*other.y, z*other.z);
+	}
+
 	public double mag () {
 		return Math.sqrt (x*x + y*y + z*z);
 	}

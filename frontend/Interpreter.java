@@ -14,9 +14,9 @@ public class Interpreter {
 		rts = new Stack <Bigframe> ();
 		// push a Bigframe that has the predefined variables in it.
 		Bigframe b = new Bigframe ("ROOT");
-		for (Map.Entry<String, STE> e : t.st.parent.vars.entries.entrySet()) {
+		for (ListMap.Entry e : t.st.parent.vars.entries.entrySet()) {
 			System.err.println("Adding " + e.getKey() + " to bigframe");
-			b.put (e.getKey(), evalExpr (((STE) e.getValue()).t));	// these will actually just be constants
+			b.put ((String) e.getKey(), evalExpr (((STE) e.getValue()).t));	// these will actually just be constants
 		}
 		rts.push(b);
 		// now run the tree.
@@ -111,6 +111,12 @@ public class Interpreter {
 		Node n = run (root);
 		smushTransforms (n);
 		buildParentPointers (n);
+		if (n.mat == null) {	// set up default material
+			n.mat = new Material (Prefs.current.DEFAULT_OBJ_COLOR);
+		}
+		propogateMaterials (n);
+		System.out.println ("FINAL CSG TREE: \n" + n);
+
 		return n;
 	}
 
@@ -123,7 +129,7 @@ public class Interpreter {
 	private Node run (Tree t) {
 		System.out.println ("RUNNING node. type = " + t.type);
 		printStack();
-		Thread.currentThread().dumpStack();
+//		Thread.currentThread().dumpStack();
 		if (t.type == Treetype.IF) {
 			for (Tree ch : t.children) {	// the CONDITION trees
 				Datum cond = evalExpr (ch.children.get(0));
@@ -182,14 +188,14 @@ public class Interpreter {
 			return runMcall (t);
 		} else if (t.type == Treetype.ROOT) {
 			Bigframe b = new Bigframe ("Root");
-			for (Map.Entry<String, STE> e : t.st.vars.entries.entrySet()) {
+			rts.push (b);
+			for (ListMap.Entry e : t.st.vars.entries.entrySet()) {
 				if (Prefs.current.RUNTIME_VARS) {
-					b.base.entries.put (e.getKey(), new Undef());
+					b.base.entries.put ((String) e.getKey(), new Undef());
 				} else {
-					b.base.entries.put (e.getKey(), evalExpr (e.getValue().t));
+					b.base.entries.put ((String) e.getKey(), evalExpr ( ((STE) (e.getValue())).t ));
 				}
 			}
-			rts.push (b);
 			return makeExplicit (runList (t.children, 0), CSG.UNION);
 		} else if (t.type == Treetype.MODULE || t.type == Treetype.FUNCTION) {
 			// skip over.
@@ -236,8 +242,8 @@ public class Interpreter {
 				sf.entries.put (vname, new Undef());
 			}
 		} else {
-			for (Map.Entry<String, STE> e : t.st.vars.entries.entrySet ()) {
-				sf.entries.put (e.getKey(), evalExpr (e.getValue().t));
+			for (ListMap.Entry e : t.st.vars.entries.entrySet ()) {
+				sf.entries.put ((String) e.getKey(), evalExpr (((STE) e.getValue()).t));
 			}
 		}
 	}
@@ -593,9 +599,15 @@ public class Interpreter {
 			TransformNode tn = new TransformNode (new Transform (mat));
 			tn.left = makeExplicit (children, CSG.UNION);
 			return tn;
-		/*
 		} else if (n.equals ("color")) {
-		*/
+			Datum col = findVar ("c");
+			if (col instanceof Vec) {
+				Node c = makeExplicit (children, CSG.UNION);
+				c.mat = new Material (((Vec) col).getFloat3());
+				return c;
+			} else {
+				error ("Expecting an rgb vector in color module invocation");
+			}
 		} else {
 			System.err.println ("Unsupported or erroneous module: " + n);
 			Thread.currentThread().dumpStack();
@@ -716,6 +728,23 @@ public class Interpreter {
 			for (int i=0; i<c.children.length; i++) {
 				c.children[i].parent = c;
 				buildParentPointers (c.children[i]);
+			}
+		}
+	}
+
+	public void propogateMaterials (Node n) {
+		// CAUTION: Only run after parent pointers have been built!
+		if (n.mat == null) {
+			if (n.parent != null) {
+				n.mat = n.parent.mat;
+			}
+		}
+		if (n.left != null) propogateMaterials (n.left);
+		if (n.right != null) propogateMaterials (n.right);
+		if (n instanceof CSG) {
+			CSG c = (CSG) n;
+			for (Node ch : c.children) {
+				propogateMaterials (ch);
 			}
 		}
 	}

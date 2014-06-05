@@ -29,6 +29,6 @@ public class TransformNode extends Node {
 	}
 
 	public String getString () {
-		return "Xform mat = " + xform + "; inverse = " + inverse;
+		return "Xform mat = " + xform; //+ "; inverse = " + inverse;
 	}
 }

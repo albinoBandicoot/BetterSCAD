@@ -2,12 +2,12 @@ package frontend;
 import java.util.*;
 public class Smallframe {
 
-	public HashMap <String, Datum> entries;
+	public ListMap <String, Datum> entries;
 	public String name;	// this is really just for debugging purposes
 
 	public Smallframe (String name) {
 		this.name = name;
-		entries = new HashMap <String, Datum>();
+		entries = new ListMap <String, Datum>();
 	}
 
 	public Datum find (String name) {
@@ -24,7 +24,7 @@ public class Smallframe {
 
 	public void print () {
 		System.out.print ("(" + name + "): ");
-		for (Map.Entry<String, Datum> e : entries.entrySet()) {
+		for (ListMap.Entry e : entries.entrySet()) {
 			System.out.print (e.getKey() + " = " + e.getValue() + ", ");
 		}
 	}

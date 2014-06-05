@@ -54,6 +54,9 @@ public class BetterSCAD extends JFrame implements ActionListener, ComponentListe
 
 		view = new Viewer (VIEW_XS, VIEW_YS);
 		view.setBounds(0,0,VIEW_XS,VIEW_YS);
+		view.addMouseListener (view);
+		view.addMouseMotionListener (view);
+		view.addMouseWheelListener (view);
 
 		vert = new JSplitPane (JSplitPane.VERTICAL_SPLIT, view, null);
 		vert.setBounds (EDIT_XS, 0, VIEW_XS, FR_YS);

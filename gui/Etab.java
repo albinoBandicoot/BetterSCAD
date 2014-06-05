@@ -55,6 +55,9 @@ public class Etab extends JPanel {
 	public void compile () {
 		Tree t = new Parser (file, text.getText(), false).parse();
 		Tree rt = Semantics.makeSymtables (t);
+		System.out.println ("---- TREE IS -----");
+		System.out.println (rt + "\n");
+
 		Interpreter i = new Interpreter (t);
 		sc = new Scene (i.run());
 		isCompiled = true;

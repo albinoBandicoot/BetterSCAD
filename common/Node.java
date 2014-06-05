@@ -4,6 +4,7 @@ import java.util.ArrayList;
 public abstract class Node {
 
 	public Node left, right, parent;
+	public Material mat;
 
 	public abstract double csg (Float3 pt);
 
@@ -78,6 +79,13 @@ public abstract class Node {
 		}
 		if (right != null) {
 			sb.append (right.stringify (depth+1) + "\n");
+		}
+		if (this instanceof CSG) {
+			sb.append ("\n");
+			CSG c = (CSG) this;
+			for (Node n : c.children) {
+				sb.append (n.stringify (depth+1) + "\n");
+			}
 		}
 		return sb.toString();
 	}

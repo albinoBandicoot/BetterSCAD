@@ -40,10 +40,10 @@ public class STSet {
 
 	public class Symtable {
 
-		public HashMap <String, STE> entries;
+		public ListMap <String, STE> entries;
 
 		public Symtable () {
-			entries = new HashMap <String, STE> ();
+			entries = new ListMap <String, STE> ();
 		}
 
 		public void put (String name, Tree t) {
@@ -109,7 +109,7 @@ public class STSet {
 
 		public String toString () {
 			StringBuilder sb = new StringBuilder("<");
-			for (Map.Entry e : entries.entrySet()) {
+			for (ListMap.Entry e : entries.entrySet()) {
 				sb.append (e.getKey());
 				Tree t = ((STE) e.getValue()).t;
 				if (t != null) {
