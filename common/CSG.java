@@ -62,6 +62,10 @@ public class  CSG extends Node {
 		*/
 	}
 
+	public double dist (Float3 pt) {
+		return csg (pt);
+	}
+
 	public int findIptsMax () {
 		int ct = 0;
 		for (int i=0; i<children.length; i++) {

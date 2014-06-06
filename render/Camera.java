@@ -21,7 +21,6 @@ public class  Camera {
 		this.scry = scry;
 		double ar = scrx / ((double) scry);
 		this.right = dir.cross(up).normalize().mul (up.mag() * ar);
-		System.out.println ("Camera is: bl = " + bl + "; dir = " + dir + "; up = " + up + "; right = " + right);
 	}
 
 	public Float3 project (Float3 p) {	// project to [0..1]
@@ -49,11 +48,12 @@ public class  Camera {
 		Float3 proj = cam.project (pt);
 		double dx = proj.x - x;
 		double dy = proj.y - y;
-		cam.bl = cam.bl.add (cam.right.mul(dx)).add (cam.up.mul(dy));
-		cam.bl = cam.bl.sub (cam.dir.mul(40));	// spacing
+		cam.bl = cam.right.mul(-0.5).add (cam.up.mul(-0.5)).sub (cam.dir.mul(40));
+//		cam.bl = bl.add (cam.right.mul(dx)).add (cam.up.mul(dy));
 
 		cam.scrx = scrx;
 		cam.scry = scry;
+		System.out.println ("Camera is: bl = " + bl + "; dir = " + dir + "; up = " + up + "; right = " + right);
 		return cam;
 	}
 

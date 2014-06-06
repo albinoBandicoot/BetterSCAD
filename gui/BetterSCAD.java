@@ -3,9 +3,12 @@ package gui;
 import javax.swing.*;
 import javax.swing.event.*;
 import java.awt.event.*;
+import java.awt.Dimension;
 import java.util.ArrayList;
 import java.io.*;
-public class BetterSCAD extends JFrame implements ActionListener, ComponentListener {
+import java.beans.PropertyChangeEvent;
+import java.beans.PropertyChangeListener;
+public class BetterSCAD extends JFrame implements ActionListener, ComponentListener, PropertyChangeListener  {
 
 	public static ArrayList<Etab> tabs = new ArrayList<Etab>();
 	public static Etab current = null;
@@ -13,7 +16,7 @@ public class BetterSCAD extends JFrame implements ActionListener, ComponentListe
 	public Editor edit;
 	public JScrollPane scroller;
 	public static Viewer view;
-	public JSplitPane horiz, vert;
+	public static JSplitPane horiz, vert;
 
 	public static JFileChooser fchooser = new JFileChooser();
 
@@ -31,7 +34,8 @@ public class BetterSCAD extends JFrame implements ActionListener, ComponentListe
 	public JMenuItem model_slice;
 
 	public static int FR_XS = 1080;
-	public static int FR_YS = 720;
+	public static int FR_YS = 660;
+	public static int fr_real_ys = 720;
 
 	public static int EDIT_XS = 600;
 	public static int EDIT_YS = FR_YS;
@@ -51,6 +55,7 @@ public class BetterSCAD extends JFrame implements ActionListener, ComponentListe
 
 		edit = new Editor ();
 		edit.setBounds(0,0,EDIT_XS,EDIT_YS);
+		edit.setPreferredSize (new Dimension (EDIT_XS, EDIT_YS));
 
 		view = new Viewer (VIEW_XS, VIEW_YS);
 		view.setBounds(0,0,VIEW_XS,VIEW_YS);
@@ -62,9 +67,13 @@ public class BetterSCAD extends JFrame implements ActionListener, ComponentListe
 		vert.setBounds (EDIT_XS, 0, VIEW_XS, FR_YS);
 		vert.setDividerLocation (VIEW_YS);
 
+		vert.addPropertyChangeListener (JSplitPane.DIVIDER_LOCATION_PROPERTY, this);
+
 		horiz = new JSplitPane (JSplitPane.HORIZONTAL_SPLIT, edit, vert);
 		horiz.setBounds (0, 0, FR_XS, FR_YS);
 		horiz.setDividerLocation (EDIT_XS);
+
+		horiz.addPropertyChangeListener (JSplitPane.DIVIDER_LOCATION_PROPERTY, this);
 
 		content.add (horiz);
 
@@ -119,7 +128,7 @@ public class BetterSCAD extends JFrame implements ActionListener, ComponentListe
 		setJMenuBar (mbar);
 		setContentPane (content);
 		pack();
-		setSize (1100, 700);
+		setSize (FR_XS+10, fr_real_ys);
 		setVisible (true);
 	}
 
@@ -130,7 +139,10 @@ public class BetterSCAD extends JFrame implements ActionListener, ComponentListe
 	public void openFile (File f) {
 		Etab e = new Etab (f, EDIT_XS-20, EDIT_YS);
 		tabs.add(e);
-		edit.addTab (e.name, e);
+		JViewport vp = new JViewport();
+		vp.add(e);
+		edit.setViewport (vp);
+//		edit.addTab (e.name, e);
 		switchTab (e);
 	}
 
@@ -142,8 +154,9 @@ public class BetterSCAD extends JFrame implements ActionListener, ComponentListe
 
 	public void switchTab (Etab e) {
 		current = e;
-		edit.setSelectedComponent (e);
+//		edit.setSelectedComponent (e);
 		vert.setBottomComponent (e.cons);
+		vert.setDividerLocation (VIEW_YS);
 		e.render();
 	}
 
@@ -208,6 +221,25 @@ public class BetterSCAD extends JFrame implements ActionListener, ComponentListe
 	public void componentMoved   (ComponentEvent e) { }
 	public void componentResized (ComponentEvent e) {
 		// do stuff
+	}
+
+	public void propertyChange (PropertyChangeEvent e) {
+		if (e.getSource() == horiz) {
+			int hdiv = horiz.getDividerLocation();
+			System.out.println ("PCE fired; horiz divider position is now " + hdiv);
+			EDIT_XS = hdiv;
+			VIEW_XS = FR_XS - EDIT_XS;
+			CONS_XS = VIEW_XS;
+			view.changeSize (VIEW_XS, VIEW_YS);
+			current.render();
+
+		} else if (e.getSource() == vert) {
+			int vdiv = vert.getDividerLocation();
+			VIEW_YS = vdiv;
+			CONS_YS = FR_YS - VIEW_YS;
+			view.changeSize (VIEW_XS, VIEW_YS);
+			current.render();
+		}
 	}
 
 }

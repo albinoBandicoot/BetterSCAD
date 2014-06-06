@@ -28,6 +28,22 @@ public class  Extrude extends Node {
 		return Math.max (z, r);
 	}
 
+	public double dist (Float3 pt) {
+		// for now, just for straight extrudes.
+		double d_inf = left.dist (pt);
+		if (pt.z > h) {
+			if (d_inf <= 0) return pt.z - h;
+			double zleg = pt.z - h;
+			return Math.sqrt (zleg*zleg + d_inf*d_inf);
+		} else if (pt.z < 0) {
+			if (d_inf <= 0) return -pt.z;
+			double zleg = -pt.z;
+			return Math.sqrt (zleg*zleg + d_inf*d_inf);
+		} else {
+			return d_inf;
+		}
+	}
+
 	public int findIptsMax () {
 		return 2 + left.findIptsMax();
 	}
@@ -37,7 +53,7 @@ public class  Extrude extends Node {
 		int deleted = 0;
 		for (int i=0; i<ninter; i++) {
 			double csgval = csg (r.get (il.ints[il.n - i - 1].t));
-			if (csgval - 1e-8 > 0) {
+			if (csgval - 1e-6 > 0) {
 				il.ints[il.n - i - 1] = null;
 				deleted ++;
 			}

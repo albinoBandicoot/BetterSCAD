@@ -13,6 +13,10 @@ public class  Revolve extends Node {
 		return 1;
 	}
 
+	public double dist (Float3 pt) {
+		return 1;
+	}
+
 	public int findIptsMax () {
 		return 2*left.findIptsMax();	// this is just a guess that feels right.
 	}

@@ -25,6 +25,19 @@ public class  Rectangle extends Node2D {
 		return Math.max(x,y);
 	}
 
+	public double dist (Float3 pt) {
+		if (pt.x >= 0 && pt.x <= xs) {
+			return Math.abs (pt.y - ys/2) - ys/2;
+		} else if (pt.y >= 0 && pt.y <= ys) {
+			return Math.abs (pt.x - xs/2) - xs/2;
+		}
+		// we're in one of the four corner regions. We'll shift these to be centered all at the origin
+		// and compute the distance from the origin.
+		double x = pt.x >= xs ? pt.x-xs : pt.x;
+		double y = pt.y >= ys ? pt.y-ys : pt.y;
+		return Math.sqrt (x*x + y*y);
+	}
+
 	public int findIptsMax () {
 		return 2;
 	}

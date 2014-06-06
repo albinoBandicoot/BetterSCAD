@@ -20,6 +20,10 @@ public class TransformNode extends Node {
 		return left.csg (inverse.transformPoint (pt));
 	}
 
+	public double dist (Float3 pt) {
+		return left.dist (inverse.transformPoint (pt));
+	}
+
 	public int findIptsMax () {
 		return left.findIptsMax();
 	}

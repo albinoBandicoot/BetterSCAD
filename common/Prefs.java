@@ -1,4 +1,5 @@
 package common;
+import java.awt.Font;
 public class Prefs {
 
 
@@ -16,6 +17,13 @@ public class Prefs {
 	public double	THETA_SCALE = 36.0;
 	public double	SCALE_BASE = 1.18;	// multiplier for zooming, per wheel click
 	public Float3	DEFAULT_OBJ_COLOR = new Float3 (1.0, 1.0, 1.0);
+
+	public Font		EDITOR_FONT = new Font ("Courier", Font.PLAIN, 13);
+	public int		EDITOR_TAB_SIZE = 6;
+
+	/* RENDERING OPTIONS */
+	public Float3	AMBIENT = new Float3 (0.3, 0.3, 0.3);
+	public int		DOWNSAMPLING = 1;
 
 	public static Prefs current = new Prefs();
 

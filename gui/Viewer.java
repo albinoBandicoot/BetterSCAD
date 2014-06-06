@@ -4,14 +4,15 @@ import common.*;
 import javax.swing.*;
 import javax.swing.event.*;
 import java.awt.event.*;
-import java.awt.Graphics;
+import java.awt.*;
 import java.awt.image.BufferedImage;
 
 public class Viewer extends JPanel implements MouseListener, MouseMotionListener, MouseWheelListener {
 
 	public BufferedImage img;
 	public int[] data;
-	public int xs, ys;
+	public int xs, ys;	// dimensions of the viewer, not necessarily the resolution of the render.
+	public int xsd, ysd;	// resolution of the render.
 	private long time;
 
 	private double theta, phi;	// changes in theta and phi from last render
@@ -20,18 +21,37 @@ public class Viewer extends JPanel implements MouseListener, MouseMotionListener
 	private boolean dragging = false;
 
 	public Viewer (int xs, int ys) {
-		img = new BufferedImage (xs, ys, 1);
-		data = new int[xs*ys];
+		int ds = Prefs.current.DOWNSAMPLING;
 		this.xs = xs;
 		this.ys = ys;
+		this.xsd = xs / ds;
+		this.ysd = ys / ds;
+		img = new BufferedImage (xsd, ysd, 1);
+		data = new int[xsd * ysd];
 	}
 
-	public void paintComponent (Graphics g) {
-		g.drawImage (img, 0, 0, null);
+	public void changeSize (int xs, int ys) {
+		this.xs = xs;
+		this.ys = ys;
+		int ds = Prefs.current.DOWNSAMPLING;
+		this.xsd = xs / ds;
+		this.ysd = ys / ds;
+		img = new BufferedImage (xsd, ysd, 1);
+		data = new int[xsd * ysd];
+	}
+
+	public void paintComponent (Graphics h) {
+		Graphics2D g = (Graphics2D) h;
+		g.setRenderingHint (RenderingHints.KEY_INTERPOLATION, RenderingHints.VALUE_INTERPOLATION_BICUBIC);
+		
+		g.drawImage (img, 0, 0, xs, ys, null);
 		g.drawString (time + "ms", 20, 20);
 	}
 
 	public void render () {
+		if (BetterSCAD.current == null || BetterSCAD.current.isCompiled == false) {
+			return;
+		}
 		Scene sc = BetterSCAD.current.sc;
 		sc.rotateStuff (phi, theta);
 		/*
@@ -42,8 +62,8 @@ public class Viewer extends JPanel implements MouseListener, MouseMotionListener
 		sc.cam.scale (scale);
 		scale = 1;
 
-		time = Raytrace.render (sc, data, xs, ys);
-		img.setRGB (0, 0, xs, ys, data, 0, xs);
+		time = Raytrace.render (sc, data, xsd, ysd);
+		img.setRGB (0, 0, xsd, ysd, data, 0, xsd);
 		repaint();
 	}
 

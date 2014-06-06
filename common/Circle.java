@@ -20,6 +20,10 @@ public class  Circle extends Node2D {
 	public double csg (Float3 pt) {
 		return Math.sqrt(pt.x*pt.x + pt.y*pt.y) - rad;
 	}
+	
+	public double dist (Float3 pt) {
+		return Math.sqrt (pt.x*pt.x + pt.y*pt.y) - rad;
+	}
 
 	public int findIptsMax () {
 		return 2;

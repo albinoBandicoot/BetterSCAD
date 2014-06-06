@@ -7,6 +7,9 @@ public abstract class Node {
 	public Material mat;
 
 	public abstract double csg (Float3 pt);
+	public double dist (Float3 pt) {
+		return csg (pt);
+	}
 
 	public abstract Node copy ();
 

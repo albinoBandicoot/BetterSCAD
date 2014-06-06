@@ -22,6 +22,10 @@ public class  Sphere extends Node {
 		return p.mag() - rad;
 	}
 
+	public double dist (Float3 p) {
+		return p.mag() - rad;
+	}
+
 	public int findIptsMax () {
 		return 2;
 	}

@@ -226,8 +226,8 @@ public class Interpreter {
 	*/
 	private void createSmallframe (Tree t) {
 		Smallframe sf = new Smallframe (t.type.toString() + ((t.data instanceof String) ? (" " + t.name()) : ""));
-		loadSmallframe (t, sf);
 		rts.peek().stack.push (sf);
+		loadSmallframe (t, sf);
 	}
 
 	private void createSmallframe (String s, Datum d) {	// create and push a smallframe with just the pair (s,d). Useful for loop variables.
@@ -335,7 +335,8 @@ public class Interpreter {
 		 * (union, linear_extrude, etc.)
 		*/
 
-		createSmallframe (mc);
+		Tree mdef = mc.st.modules.findTree(mc.name());
+		createSmallframe (mdef);	// mdef not mc! We want to put the module definition's locals in this smallframe.
 		System.out.print ("The top smallframe is: ");
 		rts.peek().stack.peek().print();
 		System.out.println();
@@ -343,7 +344,6 @@ public class Interpreter {
 		ArrayList<Node> children = runList (mc.children, 1);	// don't run the parameters list (0th child)
 
 		Bigframe b = new Bigframe (mc.name() + "_def");
-		Tree mdef = mc.st.modules.findTree(mc.name());
 		if (mdef == null) {
 			error ("Undefined module " + mc.name());
 			System.exit(1);
@@ -388,7 +388,7 @@ public class Interpreter {
 		}
 		System.err.println ("Found function definition tree # " + (fdef == null ? "null" : fdef.id));
 		populateStaticallyEnclosingLocals (b, fdef);
-		populateParameters (b, fdef.children.get(0), fc.children.get(0), false);	// is false the right value to pass for this?
+		populateParameters (b, fdef.children.get(0), fc.children.get(0), false);
 		rts.push(b);
 		STSet st = fdef.findST();
 
@@ -404,6 +404,10 @@ public class Interpreter {
 
 	private Datum runPredefFunc (Tree fdef) {
 		String n = fdef.name();
+		if (n.equals ("sqrt")) {
+		}
+			
+
 		// TODO: Implement me!
 		return new Undef();
 	}
@@ -455,13 +459,29 @@ public class Interpreter {
 			if (d instanceof Scalar) {
 				return new Circle (((Scalar) d).d);
 			} else {
-				error ("Expecting scalar circle radius");
+				error ("Expecting scalar for circle radius");
 			}
 			return null;
 
-		/*
 		} else if (n.equals ("polygon")) {
-		*/
+			Datum points = findVar ("points");
+			Datum paths = findVar ("paths");
+			if (points instanceof Vec) {
+				Vec p = (Vec) points;
+				int npts = p.vals.size();
+				Float3[] pts = new Float3[npts];
+//				int[][] ind = new int[1][npts];	// for now, just make one loop with everythin
+				for (int i=0; i<npts; i++) {
+					pts[i] = ((Vec) p.get(i)).getFloat3();
+//					ind[0][i] = i;
+				}
+				return new SimplePolygon (pts);
+//				return new Polygon (pts, ind);
+			} else {
+				error ("Expecting list of points in polygon");
+			}
+			return null;
+
 		} else if (n.equals ("square")) {
 		} else if (n.equals ("cube")) {		// linear extrude a square
 			Datum size = findVar ("size");
@@ -563,7 +583,8 @@ public class Interpreter {
 				x = Transform.makeRotate (new Float3 (1,0,0), vad.getd(0));
 				y = Transform.makeRotate (new Float3 (0,1,0), vad.getd(1));
 				z = Transform.makeRotate (new Float3 (0,0,1), vad.getd(2));
-				x = x.append(y.append(z));
+				x = z.append (y.append (x));
+//				x = x.append(y.append(z));
 				TransformNode tn = new TransformNode (x);
 				tn.left = makeExplicit (children, CSG.UNION);
 				return tn;
