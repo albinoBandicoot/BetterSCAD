@@ -13,7 +13,7 @@ public class Prefs {
 	public int 		STACK_HEIGHT_CAP = 50;
 
 	/* GUI OPTIONS */
-	public double	PHI_SCALE = 50.0;
+	public double	PHI_SCALE = -50.0;
 	public double	THETA_SCALE = 36.0;
 	public double	SCALE_BASE = 1.18;	// multiplier for zooming, per wheel click
 	public Float3	DEFAULT_OBJ_COLOR = new Float3 (1.0, 1.0, 1.0);

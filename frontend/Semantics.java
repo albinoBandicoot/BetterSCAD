@@ -60,9 +60,11 @@ public class Semantics {
 			}
 			plist.addChild (p);
 		}
+		/*	// don't add parameters to the ST!
 		for (Tree p : plist.children) {
 			mdef.st.vars.put (p.name(), p.children.isEmpty() ? null : p.children.get(0));	// that child will be null if there's no default value. This is OK.
 		}
+		*/
 		return mdef;
 	}
 
@@ -99,10 +101,12 @@ public class Semantics {
 				t.findPST().functions.put (t.name(), t);
 			}
 			// add the parameters. It's actually easier to allow parameters to refer to previous ones than to forbid it, so I'll keep that functionality even though OpenSCAD doesn't implement it (it would actually be really useful. After all, this is BetterSCAD).
+			/*
 			Tree plist = t.children.get(0);
 			for (Tree p : plist.children) {
 				t.st.vars.put (p.name(), p.children.isEmpty() ? null : p.children.get(0));	// that child will be null if there's no default value. This is OK.
 			}
+			*/
 		}
 		if (t.type == Treetype.ROOT || t.type == Treetype.MODULE) {
 			// now go through and add the regular assignments.

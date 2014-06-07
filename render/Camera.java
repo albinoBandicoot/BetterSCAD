@@ -25,7 +25,7 @@ public class  Camera {
 
 	public Float3 project (Float3 p) {	// project to [0..1]
 		Float3 pt = p.sub(bl);
-		return new Float3 (pt.dot(right) / right.magsq(), pt.dot(up) / up.magsq(), pt.dot(dir) / dir.magsq());
+		return new Float3 (pt.dot(right) / right.magsq(), 1-(pt.dot(up) / up.magsq()), pt.dot(dir) / dir.magsq());
 	}
 
 	/* pt is the point about which to rotate, d is the new direction for the camera,
@@ -61,7 +61,7 @@ public class  Camera {
 		/* This is orthographic */
 		x /= scrx;
 		y /= scry;
-		Float3 start = bl.add (up.mul(y)).add (right.mul(x));
+		Float3 start = bl.add (up.mul(1-y)).add (right.mul(x));
 		return new Ray (start, dir);
 	}
 

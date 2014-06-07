@@ -56,6 +56,9 @@ public enum Op {
 		if (this == SUB && rhs == null) {
 			return eval (new Scalar(0), lhs);
 		}
+		if (this == ADD && rhs == null) {
+			return lhs;
+		}
 		if (this == AND) {
 			return new Bool (lhs.isTrue() && rhs.isTrue());
 		}

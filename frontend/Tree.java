@@ -9,6 +9,7 @@ public class Tree {
 	public Tree parent;
 	public STSet st;	// will only be used at nodes that need it.
 	public int id;
+	public int nest_depth;	// for module and function definitions.
 
 	private static int num = 0;
 
@@ -72,7 +73,7 @@ public class Tree {
 		for (int i=0; i<depth; i++) {
 			sb.append ("   ");
 		}
-		sb.append ("(" + id + ") " + type.name() + "   ");
+		sb.append ("(" + id + ") " + type.name() + "  nest= " + nest_depth + "   ");
 		if (data != null) {
 			if (data instanceof ArrayList) {
 				for (Object o : ((ArrayList) data)) {

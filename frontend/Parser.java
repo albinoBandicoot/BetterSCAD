@@ -9,6 +9,7 @@ public class Parser {
 	private int i;
 	private File sourcefile;
 	private File sourcedir;
+	private int nesting = 0;
 
 	private static ArrayList<String> includes = new ArrayList<String>();
 
@@ -95,6 +96,7 @@ public class Parser {
 
 	public Tree parse () {	// top-level parsing routine
 		Tree root = new Tree (Treetype.ROOT);
+		root.nest_depth = 0;
 		while (peek().type != Tokentype.EOF) {
 			if (peek().is ("module")) {
 				root.addChild (parseModule());
@@ -139,7 +141,9 @@ public class Parser {
 		 * Child 0 contains the parameter profile.
 		 * Child 1 contains the module body.
 		*/
+		nesting += 1;
 		Tree res = new Tree (Treetype.MODULE);
+		res.nest_depth = nesting;
 		if (peek().is("module")) {
 			next();
 			if (peek().type == Tokentype.IDENT) {
@@ -172,6 +176,7 @@ public class Parser {
 		} else {
 			error ("Expecting module to start with 'module' keyword");
 		}
+		nesting -= 1;
 		return res;
 	}
 
@@ -181,6 +186,7 @@ public class Parser {
 		 * Child 1 is the function body.
 		*/
 		Tree res = new Tree(Treetype.FUNCTION);
+		res.nest_depth = nesting+1;	// no need to actually increment 'nesting' here, since nothing can nest inside of functions
 		if (peek().is ("function")) {
 			next ();
 			if (peek().type == Tokentype.IDENT) {
@@ -220,6 +226,7 @@ public class Parser {
 		*/
 
 		Tree res = new Tree (calltype);
+		res.nest_depth = nesting;
 		if (peek().type == Tokentype.IDENT) {
 			res.data = peek().val;
 			next();
@@ -318,6 +325,7 @@ public class Parser {
 
 	public Tree parseCondition () {
 		Tree res = new Tree (Treetype.CONDITION);
+		res.nest_depth = nesting;
 		res.addChild (parseExpr());
 		System.out.println ("Condition is \n" + res);
 		System.out.println ("peek() is " + peek());
@@ -334,6 +342,8 @@ public class Parser {
 			/* An if statement's children must all be CONDITION nodes. A CONDITION tree will have as its first 
 			 * child the condition, and subsequent children are the body. Else branches get null first children. */
 			Tree res = new Tree (Treetype.IF);
+			nesting += 1;
+			res.nest_depth = nesting;
 			next();
 			Tree cond = parseCondition();
 			res.addChild (cond);
@@ -358,6 +368,7 @@ public class Parser {
 					} else if (peek().type == Tokentype.OPEN_BRACE) {	// this is the ELSE branch
 						next();
 						cond = new Tree (Treetype.CONDITION);
+						cond.nest_depth = nesting;
 						cond.addChild (new Tree (Treetype.NOP));
 						res.addChild (cond);	
 						hit_else = true;
@@ -371,6 +382,7 @@ public class Parser {
 					next();
 					if (hit_else) break;
 				}
+				nesting -= 1;
 				return res;
 			} else {
 				error ("Expecting { after if condition");
@@ -383,7 +395,9 @@ public class Parser {
 			 * 		This tree has the variable name as its data.
 			 * Subsequent children: statements of the body
 			*/
+			nesting += 1;
 			Tree res = new Tree (peek().is("for") ? Treetype.FOR : Treetype.INTFOR);
+			res.nest_depth = nesting;
 			next();
 			if (peek().type == Tokentype.OPEN_PAREN) {
 				next();
@@ -460,6 +474,7 @@ public class Parser {
 			 * 	assign (x = a[__TEMP]) {
 			*/ 
 
+			nesting -= 1;
 			return res;
 		}
 
@@ -596,14 +611,14 @@ public class Parser {
 
 	public Tree parseL1 () {	// unaries 
 		Tree root;
-		if (peek().isOp("!") || peek().isOp("-")) {
+		if (peek().isOp("!") || peek().isOp("-") || peek().isOp("+")) {
 			root = new Tree (Treetype.OP, peek().getOp());
 			next();
 		} else {
 			return parseL0();
 		}
 		Tree parent = root;
-		while (peek().isOp ("!") || peek().isOp("-")) {
+		while (peek().isOp ("!") || peek().isOp("-") || peek().isOp("+")) {
 			Tree res = new Tree (Treetype.OP, peek().getOp());
 			next();
 			parent.addChild (res);

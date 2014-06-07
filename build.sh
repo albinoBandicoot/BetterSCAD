@@ -6,6 +6,7 @@ if [ $# -ge 1 ]
 then
 	if [ $1 = "-c" ]
 	then
+		rm `find ./ -name "*.java~"` 2>/dev/null
 		exit 0
 	fi
 fi
