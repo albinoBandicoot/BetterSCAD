@@ -1,7 +1,10 @@
 package frontend;
 public class ParseException extends Exception {
 
-	public ParseException (String s) {
+	public FileMark fm;
+
+	public ParseException (String s, FileMark fm) {
 		super (s);
+		this.fm = fm;
 	}
 }

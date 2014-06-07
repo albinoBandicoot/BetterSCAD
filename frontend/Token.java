@@ -5,27 +5,27 @@ public class Token {
 	public Tokentype type;
 	public String val;
 	public double nval;
-	public int line;
+	public FileMark fm;
 
-	public Token (Tokentype type, int line) {
+	public Token (Tokentype type, FileMark fm) {
 		this.type = type;
 		this.val = "";
 		this.nval = 0;
-		this.line = line;
+		this.fm = fm;
 	}
 
-	public Token (Tokentype type, String val, int line) {
+	public Token (Tokentype type, String val, FileMark fm) {
 		this.type = type;
 		this.val = val;
 		this.nval = 0;
-		this.line = line;
+		this.fm = fm;
 	}
 
-	public Token (Tokentype type, double nval, int line) {
+	public Token (Tokentype type, double nval, FileMark fm) {
 		this.type = type;
 		this.val = "";
 		this.nval = nval;
-		this.line = line;
+		this.fm = fm;
 	}
 
 	public boolean is (String s) {

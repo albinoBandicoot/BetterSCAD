@@ -50,7 +50,7 @@ public class STSet {
 			System.err.println ("Putting " + name + " into the symbol table #" + id + " with tree\n" + t + "----");
 			// first we check the tree to make sure that all of the symbols have been defined. 
 			if (!depsOK (t)) {
-				Semantics.error ("Failed dependency check for tree \n" + t);
+				Semantics.error ("Failed dependency check for tree \n" + t, t);
 			}
 			entries.put (name, new STE(t));
 		}

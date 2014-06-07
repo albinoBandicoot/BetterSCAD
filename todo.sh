@@ -1,3 +1,3 @@
 #!/bin/sh
 
-egrep -H -n --color=auto "TODO|FIXME" `find ./ -name "*.java"`
+egrep -H -n -i --color=auto "TODO|FIXME|for now" `find ./ -name "*.java"`

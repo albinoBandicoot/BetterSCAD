@@ -60,17 +60,15 @@ public class Lexer {
 		}
 		s = sb.toString();
 		i = 0;
-		/*
 		   System.out.println ("Line breaks!");
 		   for (int i=0; i<linebreaks.size(); i++) {
 		   System.out.println ("breaks[" + i + "] = " + linebreaks.get(i));
 		   }
-		   */
 	}
 
 	private void collapseComment (int start, int end) {
-		int sline = line (start);
-		int eline = line (end);
+		int sline = line (start).line;
+		int eline = line (end).line;
 		for (int l = sline; l < eline; l++){
 			linebreaks.set (l, start);
 		}
@@ -79,12 +77,13 @@ public class Lexer {
 		}
 	}
 	
-	private int line (int pos) {
+	private FileMark line (int pos) {
 		int j=0;
 		while (j < linebreaks.size() && linebreaks.get(j) < pos) {
 			j++;
 		}
-		return j;
+		if (j == 0) j = 1;
+		return new FileMark (j, pos - linebreaks.get(j-1), pos);
 	}
 
 	public String getEscape (char c) throws ParseException {
@@ -149,9 +148,8 @@ public class Lexer {
 	}
 
 	public void error (String message) throws ParseException{
-		int line = line (i);
-		int pos = i - linebreaks.get (line-1);
-		throw new ParseException ("Lexer ERROR at " + line + ":" + pos + "  " + message);
+		FileMark fm = line(i);
+		throw new ParseException ("Lexer ERROR at " + fm.line + ":" + fm.col + "  " + message, fm);
 	}
 
 	public ArrayList<Token> tokenize () throws ParseException {

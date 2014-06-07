@@ -71,10 +71,17 @@ public class Etab extends JTextArea {
 			render();
 		} catch (ParseException pe) {
 			cons.append (pe.getMessage());
+			setCaretPosition (pe.fm.idx);
 		} catch (SemanticException se) {
 			cons.append (se.getMessage());
+			if (se.fm != null) {
+				setCaretPosition (se.fm.idx);
+			}
 		} catch (RTException rte) {
 			cons.append (rte.getMessage());
+			if (rte.fm != null) {
+				setCaretPosition (rte.fm.idx);
+			}
 		}
 	}
 

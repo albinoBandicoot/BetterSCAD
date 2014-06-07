@@ -6,12 +6,16 @@ public class Semantics {
 		throw new SemanticException ("Semantics ERROR: " + message);
 	}
 
+	public static void error (String message, Tree t) throws SemanticException {
+		throw new SemanticException ("Semantics ERROR at " + t.fm + ": " + message, t);
+	}
+
 	private static boolean isRMF (Tree t) {
 		return t.type == Treetype.ROOT || t.type == Treetype.MODULE || t.type == Treetype.FUNCTION;
 	}
 
 	public static Tree makeSymtables (Tree root) throws SemanticException {
-		Tree rt = new Tree (Treetype.ROOT);
+		Tree rt = new Tree (Treetype.ROOT, new FileMark (0,0,0));
 		STSet runtimes = new STSet (null, rt);
 		rt.st = runtimes;
 		rt.addChild (root);
@@ -35,10 +39,10 @@ public class Semantics {
 			runtimes.functions.put (f, null);
 		}
 
-		runtimes.vars.put ("true", new Tree (Treetype.BLIT, true));
-		runtimes.vars.put ("false", new Tree (Treetype.BLIT, false));
-		runtimes.vars.put ("PI", new Tree (Treetype.FLIT, 3.14159265358979232));
-		runtimes.vars.put ("undef", new Tree (Treetype.UNDEF));
+		runtimes.vars.put ("true", new Tree (Treetype.BLIT, true, new FileMark (0,0,0)));
+		runtimes.vars.put ("false", new Tree (Treetype.BLIT, false, new FileMark (0,0,0)));
+		runtimes.vars.put ("PI", new Tree (Treetype.FLIT, 3.14159265358979232, new FileMark (0,0,0)));
+		runtimes.vars.put ("undef", new Tree (Treetype.UNDEF, new FileMark (0,0,0)));
 
 		fillST (root);
 		System.err.println ("Symbol tables complete");
@@ -46,14 +50,14 @@ public class Semantics {
 	}
 
 	private static Tree createModuleTree (String[] pnames, Datum[] defs) {
-		Tree mdef = new Tree (Treetype.MODULE);
-		Tree plist = new Tree (Treetype.PARAMLIST);
+		Tree mdef = new Tree (Treetype.MODULE, new FileMark (0,0,0));
+		Tree plist = new Tree (Treetype.PARAMLIST, new FileMark (0,0,0));
 		mdef.addChild (plist);	// remember this makes a parent pointer in plist.
 		mdef.createST();
 		for (int i=0; i<pnames.length; i++) {
-			Tree p = new Tree (Treetype.PARAM, pnames[i]);
+			Tree p = new Tree (Treetype.PARAM, pnames[i], new FileMark (0,0,0));
 			if (defs[i] == null || defs[i] instanceof Undef) {
-				plist.addChild (new Tree (Treetype.PARAM, pnames[i]));
+				plist.addChild (new Tree (Treetype.PARAM, pnames[i], new FileMark (0,0,0)));
 			} else {
 				p.addChild (getTreeFromDatum (defs[i]));
 			}
@@ -69,9 +73,9 @@ public class Semantics {
 
 	private static Tree getTreeFromDatum (Datum d) {
 		if (d instanceof Scalar) {
-			return new Tree (Treetype.FLIT, ((Scalar) d).d);
+			return new Tree (Treetype.FLIT, ((Scalar) d).d, new FileMark(0,0,0));
 		} else if (d instanceof Vec) {
-			Tree v = new Tree (Treetype.VECTOR);
+			Tree v = new Tree (Treetype.VECTOR, new FileMark(0,0,0));
 			for (Datum elem : ((Vec) d).vals) {
 				v.children.add (getTreeFromDatum (elem));
 			}
@@ -79,9 +83,9 @@ public class Semantics {
 		} else if (d instanceof Undef) {
 			return null;
 		} else if (d instanceof Str) {
-			return new Tree (Treetype.SLIT, ((Str) d).data);
+			return new Tree (Treetype.SLIT, ((Str) d).data, new FileMark(0,0,0));
 		} else if (d instanceof Bool) {
-			return new Tree (Treetype.BLIT, ((Bool) d).val);
+			return new Tree (Treetype.BLIT, ((Bool) d).val, new FileMark(0,0,0));
 		}
 		return null;
 	}
@@ -132,7 +136,7 @@ public class Semantics {
 				Tree plist = t.children.get(0);
 				for (Tree p : plist.children) {
 					if (p.children.isEmpty()) {
-						error ("Missing assignment to variable " + p.name() + " in assign block");
+						error ("Missing assignment to variable " + p.name() + " in assign block", plist);
 					}
 					t.st.vars.put (p.name(), p.children.get(0));
 				}

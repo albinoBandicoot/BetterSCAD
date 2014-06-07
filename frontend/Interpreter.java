@@ -26,6 +26,10 @@ public class Interpreter {
 		throw new RTException ("runtime ERROR: " + message);
 	}
 
+	public void error (String message, Tree t) throws RTException {
+		throw new RTException ("runtime ERROR at " + t.fm + ": " + message, t);
+	}
+
 	private Datum findVar (String name) throws RTException {
 		if (name.charAt(0) == '$') {	// special variables just search the stack directly upwards (dynamic scope)
 			for (int i = rts.size()-1; i>=0; i--) {
@@ -97,7 +101,7 @@ public class Interpreter {
 		} else {
 			System.err.println ("Uh oh, bad tree type in evalExpr: " + t);
 			Thread.currentThread().dumpStack();
-			error ("Internal error: bad tree type in evalExpr" + t.type);
+			error ("Internal error: bad tree type in evalExpr" + t.type, t);
 			return new Undef();
 		}
 	}
@@ -159,7 +163,7 @@ public class Interpreter {
 				double inc = ((Scalar) evalExpr(v.children.get(2))).d;
 				if (inc == 0 || (end-start)/inc < 0) {
 					// bad range
-					error ("Bad range");
+					error ("Bad range", v);
 					return null;
 				}
 				while (start <= end) {
@@ -168,7 +172,7 @@ public class Interpreter {
 					start += inc;
 				}
 			} else {
-				error ("Bad tree type for for loop statement");
+				error ("Bad tree type for for loop statement", t);
 			}
 			rts.pop();
 			return makeExplicit (res, t.type == Treetype.FOR ? CSG.UNION : CSG.INTERSECTION);
@@ -282,8 +286,7 @@ public class Interpreter {
 
 	private Node runMcall (Tree mc) throws RTException {
 		if (rts.size() > Prefs.current.STACK_HEIGHT_CAP) {
-			error ("Stack height limit of " + Prefs.current.STACK_HEIGHT_CAP + " reachd.");
-			System.exit(1);	// for now; but this should be immediately fatal, somehow, in the real thing
+			error ("Stack height limit of " + Prefs.current.STACK_HEIGHT_CAP + " reached.", mc);
 		}
 		System.out.println ("Running mcall " + mc.name());
 		/* To run a module: first, get the Node that represents the children. This will involve pushing
@@ -298,7 +301,7 @@ public class Interpreter {
 
 		Tree mdef = mc.st.modules.findTree(mc.name());
 		if (mdef == null) {
-			error ("Undefined module " + mc.name());
+			error ("Undefined module " + mc.name(), mc);
 		}
 
 		ArrayList<Node> children = runList (mc.children, 1);	// don't run the parameters list (0th child)
@@ -330,7 +333,7 @@ public class Interpreter {
 
 		Node result;
 		if (predef) {
-			result = runPredefModule (mdef, children);
+			result = runPredefModule (mc, mdef, children);
 		} else {
 			result = runUserModule (mdef, children);
 		}
@@ -341,12 +344,12 @@ public class Interpreter {
 	/* This will be in many ways similar to runMcall, except there is no child evaluation */
 	private Datum runFcall (Tree fc) throws RTException {
 		if (rts.size() > Prefs.current.STACK_HEIGHT_CAP) {
-			error ("Stack height limit reached");
+			error ("Stack height limit reached", fc);
 			System.exit(1);
 		}
 		Tree fdef = fc.findST().functions.findTree(fc.name());
 		if (fdef == null) {
-			error ("Undefined function " + fc.name());
+			error ("Undefined function " + fc.name(), fc);
 		}
 		System.err.println ("Found function definition tree # " + (fdef == null ? "null" : fdef.id));
 
@@ -387,7 +390,7 @@ public class Interpreter {
 	// surface module??
 	// polyhedron module??
 	// import dxf? stl?
-	private Node runPredefModule (Tree mdef, ArrayList<Node> children) throws RTException {
+	private Node runPredefModule (Tree mc, Tree mdef, ArrayList<Node> children) throws RTException {
 		String n = mdef.name();
 		Frame top = rts.peek();
 		if (n.equals("union")) {
@@ -432,7 +435,7 @@ public class Interpreter {
 			if (d instanceof Scalar) {
 				return new Circle (((Scalar) d).d);
 			} else {
-				error ("Expecting scalar for circle radius");
+				error ("Expecting scalar for circle radius", mc);
 			}
 			return null;
 
@@ -451,7 +454,7 @@ public class Interpreter {
 				return new SimplePolygon (pts);
 //				return new Polygon (pts, ind);
 			} else {
-				error ("Expecting list of points in polygon");
+				error ("Expecting list of points in polygon", mc);
 			}
 			return null;
 
@@ -466,7 +469,7 @@ public class Interpreter {
 			} else if (size instanceof Vec) {
 				s = ((Vec) size).getFloat3();
 			} else {
-				error ("Cube size must be either a scalar or a vector");
+				error ("Cube size must be either a scalar or a vector", mc);
 			}
 			Rectangle rect = new Rectangle (s.x, s.y);
 			Extrude e = new Extrude (s.z);
@@ -492,17 +495,17 @@ public class Interpreter {
 				r1 = ((Scalar) dr).d;
 				r2 =r1;
 			} else {
-				if (!(dr instanceof Undef)) error ("Cylinder radius must be a scalar");
+				if (!(dr instanceof Undef)) error ("Cylinder radius must be a scalar", mc);
 			}
 			if (dr1 instanceof Scalar) {
 				r1 = ((Scalar) dr1).d;
 			} else {
-				if (!(dr1 instanceof Undef)) error ("Cylinder r1 must be a scalar");
+				if (!(dr1 instanceof Undef)) error ("Cylinder r1 must be a scalar", mc);
 			}
 			if (dr2 instanceof Scalar) {
 				r2 = ((Scalar) dr2).d;
 			} else {
-				if (!(dr2 instanceof Undef)) error ("Cylinder r2 must be a scalar");
+				if (!(dr2 instanceof Undef)) error ("Cylinder r2 must be a scalar", mc);
 			}
 			if (h instanceof Scalar) {
 				Circle c = new Circle (r1);
@@ -517,7 +520,7 @@ public class Interpreter {
 					return e;
 				}
 			} else {
-				error ("Cylinder height and radii must be scalars");
+				error ("Cylinder height and radii must be scalars", mc);
 			}
 
 		} else if (n.equals ("translate")) {
@@ -530,7 +533,7 @@ public class Interpreter {
 					return tn;
 				}
 			}
-			error ("Translate expects a flat vector of length 2 or 3");
+			error ("Translate expects a flat vector of length 2 or 3", mc);
 			return null;
 		} else if (n.equals ("scale")) {
 			Datum d = top.find ("v");
@@ -544,14 +547,14 @@ public class Interpreter {
 					}
 					tn = new TransformNode (Transform.makeScale (s));
 				} else {
-					error ("Scale expects a scalar or flat vector of length 2 or 3");
+					error ("Scale expects a scalar or flat vector of length 2 or 3", mc);
 					return null;
 				}
 			} else if (d instanceof Scalar) {
 				double sfac = ((Scalar) d).d;
 				tn = new TransformNode (Transform.makeScale (new Float3 (sfac, sfac, sfac)));
 			} else {
-				error ("Scale expects a scalar or flat vector of length 2 or 3");
+				error ("Scale expects a scalar or flat vector of length 2 or 3", mc);
 				return null;
 			}
 			tn.left = makeExplicit (children, CSG.UNION);
@@ -567,7 +570,7 @@ public class Interpreter {
 			*/
 			if (ad instanceof Vec) {	// x, y, z angles
 				if (! ((Vec) ad).isFlat()) {
-					error ("Rotate given a non-flat x,y,z angle vector");
+					error ("Rotate given a non-flat x,y,z angle vector", mc);
 					return null;
 				}
 				Vec vad = (Vec) ad;
@@ -587,20 +590,20 @@ public class Interpreter {
 					tn.left = makeExplicit (children, CSG.UNION);
 					return tn;
 				} else {
-					error ("Expecting vector for rotation");
+					error ("Expecting vector for rotation", mc);
 				}
 			}
-			error ("Rotate expects either a scalar or a flat vector for its angle");
+			error ("Rotate expects either a scalar or a flat vector for its angle", mc);
 			return null;
 		} else if (n.equals ("mirror")) {
 		} else if (n.equals ("multmatrix")) {
 			Datum m = top.find ("m");
 			if (! (m instanceof Vec)) {
-				error ("Expecting matrix in multmatrix");
+				error ("Expecting matrix in multmatrix", mc);
 			}
 			Vec vm = (Vec) m;
 			if (vm.wellFormedMatrix() == -1) {
-				error ("Bad matrix");
+				error ("Bad matrix", mc);
 				return null;
 			}
 			double[][] mat = new double[4][4];
@@ -619,12 +622,10 @@ public class Interpreter {
 				c.mat = new Material (((Vec) col).getFloat3());
 				return c;
 			} else {
-				error ("Expecting an rgb vector in color module invocation");
+				error ("Expecting an rgb vector in color module invocation", mc);
 			}
 		} else {
-			System.err.println ("Unsupported or erroneous module: " + n);
-			Thread.currentThread().dumpStack();
-			System.exit(1);
+			error ("Unsupported or erroneous module: " + n, mc);
 		}
 		return null;
 

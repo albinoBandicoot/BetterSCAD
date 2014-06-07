@@ -10,23 +10,31 @@ public class Tree {
 	public STSet st;	// will only be used at nodes that need it.
 	public int id;
 	public int nest_depth;	// for module and function definitions.
+	public FileMark fm;
 
 	private static int num = 0;
 
 	public Tree (Treetype type) {
 		this.type = type;
-		data = null;
+		data =null;
 		children = new ArrayList<Tree>();
 		parent = null;
 		id = num++;
+		fm = new FileMark (0,0,0);
 	}
 
-	public Tree (Treetype type, Object data) {
+	public Tree (Treetype type, FileMark fm) {
+		this(type);
+		this.fm = fm;
+	}
+
+	public Tree (Treetype type, Object data, FileMark fm) {
 		this.type = type;
 		this.data = data;
 		children = new ArrayList<Tree> ();
 		parent = null;
 		id = num++;
+		this.fm = fm;
 	}
 
 	public String name () {	// since the data is so often used to encode a name, why not have a convenience method for it?
