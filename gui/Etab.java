@@ -57,16 +57,25 @@ public class Etab extends JTextArea {
 	}
 
 	public void compile () {
-		Tree t = new Parser (file, getText(), false).parse();
-		Tree rt = Semantics.makeSymtables (t);
-		System.out.println ("---- TREE IS -----");
-		System.out.println (rt + "\n");
+		cons.clear();
+		try {
+			Tree t = new Parser (file, getText(), false).parse();
+			Tree rt = Semantics.makeSymtables (t);
+			System.out.println ("---- TREE IS -----");
+			System.out.println (rt + "\n");
 
-		Interpreter i = new Interpreter (t);
-		sc = new Scene (i.run());
-		isCompiled = true;
+			Interpreter i = new Interpreter (t);
+			sc = new Scene (i.run());
+			isCompiled = true;
 
-		render();
+			render();
+		} catch (ParseException pe) {
+			cons.append (pe.getMessage());
+		} catch (SemanticException se) {
+			cons.append (se.getMessage());
+		} catch (RTException rte) {
+			cons.append (rte.getMessage());
+		}
 	}
 
 	public void save () throws IOException {

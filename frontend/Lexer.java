@@ -22,7 +22,7 @@ public class Lexer {
 
 	private ArrayList<Integer> linebreaks;
 
-	public Lexer (File f) {
+	public Lexer (File f) throws ParseException {
 		try {
 			setupLexer (new Scanner (f));
 		} catch (IOException e) {
@@ -30,11 +30,11 @@ public class Lexer {
 		}
 	}
 
-	public Lexer (String s) {
+	public Lexer (String s) throws ParseException {
 		setupLexer (new Scanner (s));
 	}
 
-	public void setupLexer (Scanner sc) {
+	public void setupLexer (Scanner sc) throws ParseException {
 		linebreaks = new ArrayList<Integer>();
 		linebreaks.add(0);
 		StringBuilder sb = new StringBuilder ();
@@ -87,7 +87,7 @@ public class Lexer {
 		return j;
 	}
 
-	public String getEscape (char c) {
+	public String getEscape (char c) throws ParseException {
 		switch (c) {
 			case 'n':	return "\n";
 			case 'r':	return "\r";
@@ -148,14 +148,13 @@ public class Lexer {
 		return null;
 	}
 
-	public void error (String message) {
+	public void error (String message) throws ParseException{
 		int line = line (i);
 		int pos = i - linebreaks.get (line-1);
-		System.err.println ("Lexer ERROR at " + line + ":" + pos + "  " + message);
-		System.exit(1);
+		throw new ParseException ("Lexer ERROR at " + line + ":" + pos + "  " + message);
 	}
 
-	public ArrayList<Token> tokenize () {
+	public ArrayList<Token> tokenize () throws ParseException {
 		ArrayList<Token> tokens = new ArrayList<Token>();
 		if (s.length() == 0) {
 			return tokens;

@@ -2,7 +2,7 @@ package frontend;
 
 import java.util.HashMap;
 import java.util.Map;
-public class STSet {	
+public class STSet {
 
 	private static int NUM = 0;
 	
@@ -46,7 +46,7 @@ public class STSet {
 			entries = new ListMap <String, STE> ();
 		}
 
-		public void put (String name, Tree t) {
+		public void put (String name, Tree t) throws SemanticException {
 			System.err.println ("Putting " + name + " into the symbol table #" + id + " with tree\n" + t + "----");
 			// first we check the tree to make sure that all of the symbols have been defined. 
 			if (!depsOK (t)) {
@@ -67,6 +67,19 @@ public class STSet {
 			} else if (t.type == Treetype.IDENT) {
 				return findVar ((String) t.data);
 			} else if (t.type == Treetype.MCALL || t.type == Treetype.FCALL) {
+				/*
+				if (t.type == Treetype.MCALL) {
+					if (!modules.findVar (t.name())) {
+						return false;
+					}
+				}
+				if (t.type == Treetype.FCALL) {
+					if (!functions.findVar (t.name())) {
+						return false;
+					}
+				}
+				*/
+
 				Tree plist = t.children.get(0);
 				for (Tree param : plist.children) {
 					if (param.type == Treetype.PARAM) {

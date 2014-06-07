@@ -9,7 +9,7 @@ public class Interpreter {
 	private Tree root;
 	private Stack<Frame> rts;
 
-	public Interpreter (Tree t) {
+	public Interpreter (Tree t) throws RTException {
 		root = t;
 		rts = new Stack <Frame> ();
 		// push a Frame that has the predefined variables in it.
@@ -22,11 +22,11 @@ public class Interpreter {
 		// now run the tree.
 	}
 
-	public void error (String message) {
-		System.err.println ("*** ERROR: " + message);
+	public void error (String message) throws RTException {
+		throw new RTException ("runtime ERROR: " + message);
 	}
 
-	private Datum findVar (String name) {
+	private Datum findVar (String name) throws RTException {
 		if (name.charAt(0) == '$') {	// special variables just search the stack directly upwards (dynamic scope)
 			for (int i = rts.size()-1; i>=0; i--) {
 				Datum d = rts.get(i).find (name);
@@ -62,7 +62,7 @@ public class Interpreter {
 		return f;
 	}
 
-	private Datum evalExpr (Tree t) {
+	private Datum evalExpr (Tree t) throws RTException {
 		if (t.type == Treetype.FLIT) {
 			return new Scalar ((Double) t.data);
 		} else if (t.type == Treetype.SLIT) {
@@ -97,13 +97,17 @@ public class Interpreter {
 		} else {
 			System.err.println ("Uh oh, bad tree type in evalExpr: " + t);
 			Thread.currentThread().dumpStack();
-			System.exit(1);
+			error ("Internal error: bad tree type in evalExpr" + t.type);
+			return new Undef();
 		}
-		return null;
 	}
 
-	public Node run () {
+	public Node run () throws RTException {
 		Node n = run (root);
+		if (n == null) {
+			error ("No geometry");
+			return null;
+		}
 		smushTransforms (n);
 		buildParentPointers (n);
 		if (n.mat == null) {	// set up default material
@@ -121,7 +125,7 @@ public class Interpreter {
 		}
 	}
 
-	private Node run (Tree t) {
+	private Node run (Tree t) throws RTException {
 		System.out.println ("RUNNING node. type = " + t.type);
 		printStack();
 //		Thread.currentThread().dumpStack();
@@ -197,7 +201,7 @@ public class Interpreter {
 	}
 
 	/* Interpret a list of trees, starting at index 'start' */
-	private ArrayList<Node> runList (ArrayList<Tree> t, int start) {	
+	private ArrayList<Node> runList (ArrayList<Tree> t, int start) throws RTException {	
 		ArrayList<Node> ch = new ArrayList<Node>();
 		for (int i=start; i<t.size(); i++) {
 			Node n = run (t.get(i));
@@ -214,13 +218,13 @@ public class Interpreter {
 	 * If RUNTIME_VARS is true, these symbols are entered into the table but initialized to undef
 	 * If RUNTIME_VARS if false, their trees from the static ST are evaluated and then they are entered.
 	*/
-	private void createFrame (Tree t) {
+	private void createFrame (Tree t) throws RTException {
 		Frame f = new Frame (t.type.toString() + ((t.data instanceof String) ? (" " + t.name()) : ""), getStaticLink(t), t);
 		rts.push (f);
 		loadFrame (t, f);
 	}
 
-	private void loadFrame (Tree t, Frame f) {
+	private void loadFrame (Tree t, Frame f) throws RTException {
 		System.out.println ("Loading frame " + f.id + " with vars from tree " + t.id);
 		if (Prefs.current.RUNTIME_VARS) {
 			for (String vname : t.st.vars.entries.keySet()) {
@@ -238,7 +242,7 @@ public class Interpreter {
 	// According to the parameter profile in def (corresponds to a module or function definition), 
 	// add the parameters in plist to the bigframe's base. def is needed to resolve the names
 	// of positional parameters.
-	private void populateParameters (Frame b, Tree def, Tree plist, boolean predef) {
+	private void populateParameters (Frame b, Tree def, Tree plist, boolean predef) throws RTException {
 		int pos = 0;
 
 		// first initialize the defaults
@@ -276,7 +280,7 @@ public class Interpreter {
 	 * The module's children or body is the stuff that gets passed in braces.
 	 * The module's definition is the actual code associated with the module. */
 
-	private Node runMcall (Tree mc) {
+	private Node runMcall (Tree mc) throws RTException {
 		if (rts.size() > Prefs.current.STACK_HEIGHT_CAP) {
 			error ("Stack height limit of " + Prefs.current.STACK_HEIGHT_CAP + " reachd.");
 			System.exit(1);	// for now; but this should be immediately fatal, somehow, in the real thing
@@ -295,7 +299,6 @@ public class Interpreter {
 		Tree mdef = mc.st.modules.findTree(mc.name());
 		if (mdef == null) {
 			error ("Undefined module " + mc.name());
-			System.exit(1);
 		}
 
 		ArrayList<Node> children = runList (mc.children, 1);	// don't run the parameters list (0th child)
@@ -336,18 +339,18 @@ public class Interpreter {
 	}
 
 	/* This will be in many ways similar to runMcall, except there is no child evaluation */
-	private Datum runFcall (Tree fc) {
+	private Datum runFcall (Tree fc) throws RTException {
 		if (rts.size() > Prefs.current.STACK_HEIGHT_CAP) {
 			error ("Stack height limit reached");
 			System.exit(1);
 		}
 		Tree fdef = fc.findST().functions.findTree(fc.name());
-		Frame b = new Frame (fc.name(), getStaticLink(fdef), fdef);
 		if (fdef == null) {
 			error ("Undefined function " + fc.name());
-			System.exit(1);
 		}
 		System.err.println ("Found function definition tree # " + (fdef == null ? "null" : fdef.id));
+
+		Frame b = new Frame (fc.name(), getStaticLink(fdef), fdef);
 		Frame oldtop = rts.peek();
 		rts.push(b);
 
@@ -384,7 +387,7 @@ public class Interpreter {
 	// surface module??
 	// polyhedron module??
 	// import dxf? stl?
-	private Node runPredefModule (Tree mdef, ArrayList<Node> children) {
+	private Node runPredefModule (Tree mdef, ArrayList<Node> children) throws RTException {
 		String n = mdef.name();
 		Frame top = rts.peek();
 		if (n.equals("union")) {
@@ -489,17 +492,17 @@ public class Interpreter {
 				r1 = ((Scalar) dr).d;
 				r2 =r1;
 			} else {
-				error ("Cylinder radius must be a scalar");
+				if (!(dr instanceof Undef)) error ("Cylinder radius must be a scalar");
 			}
 			if (dr1 instanceof Scalar) {
 				r1 = ((Scalar) dr1).d;
 			} else {
-				error ("Cylinder r1 must be a scalar");
+				if (!(dr1 instanceof Undef)) error ("Cylinder r1 must be a scalar");
 			}
 			if (dr2 instanceof Scalar) {
 				r2 = ((Scalar) dr2).d;
 			} else {
-				error ("Cylinder r2 must be a scalar");
+				if (!(dr2 instanceof Undef)) error ("Cylinder r2 must be a scalar");
 			}
 			if (h instanceof Scalar) {
 				Circle c = new Circle (r1);
@@ -627,7 +630,7 @@ public class Interpreter {
 
 	}
 
-	private Node runUserModule (Tree mdef, ArrayList<Node> children) {
+	private Node runUserModule (Tree mdef, ArrayList<Node> children) throws RTException {
 		rts.peek().put ("$children", new Scalar (children.size()));
 
 		// run the code

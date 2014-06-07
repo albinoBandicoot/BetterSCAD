@@ -23,7 +23,7 @@ public class Prefs {
 
 	/* RENDERING OPTIONS */
 	public Float3	AMBIENT = new Float3 (0.3, 0.3, 0.3);
-	public int		DOWNSAMPLING = 1;
+	public int		DOWNSAMPLING = 3;
 
 	public static Prefs current = new Prefs();
 

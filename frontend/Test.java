@@ -9,7 +9,7 @@ import java.awt.image.BufferedImage;
 
 public class Test {
 
-	public static void main (String[] args) throws IOException {
+	public static void main (String[] args) throws IOException, ParseException, SemanticException, RTException {
 		File inp = new File (args[0]);
 		Tree t = new Parser (inp, "", true).parse();
 		System.out.println(t);

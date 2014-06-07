@@ -2,16 +2,15 @@ package frontend;
 
 public class Semantics {
 
-	public static void error (String message) {
-		System.err.println ("Semantics ERROR: " + message);
-		System.exit(1);
+	public static void error (String message) throws SemanticException {
+		throw new SemanticException ("Semantics ERROR: " + message);
 	}
 
 	private static boolean isRMF (Tree t) {
 		return t.type == Treetype.ROOT || t.type == Treetype.MODULE || t.type == Treetype.FUNCTION;
 	}
 
-	public static Tree makeSymtables (Tree root) {
+	public static Tree makeSymtables (Tree root) throws SemanticException {
 		Tree rt = new Tree (Treetype.ROOT);
 		STSet runtimes = new STSet (null, rt);
 		rt.st = runtimes;
@@ -87,7 +86,7 @@ public class Semantics {
 		return null;
 	}
 
-	private static void fillST (Tree t) {
+	private static void fillST (Tree t) throws SemanticException {
 		System.out.println ("Will fill symbol table for tree of type " + t.type);
 		if (t.type == Treetype.ASSIGN) {
 			t.findPST().vars.put (t.name(), t.children.get(0));
