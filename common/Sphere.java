@@ -30,30 +30,10 @@ public class  Sphere extends Node {
 		return 2;
 	}
 
-	/* This only returns the first (closest) positive intersection with the sphere, or null if there is no 
-	 * intersection with a positive t value */
-	public Intersection intersection (Ray r) {
-		/* See p 739 of Real Time Rendering */
-		Float3 omc = r.start;
-		double b = r.dir.dot (omc);
-		double c = omc.dot(omc) - rad*rad;
-		if (b*b - c < 0) {
-			return Intersection.NONE;
-		}
-		double d = Math.sqrt (b*b-c);
-		double t0 = -b + d;
-		double t1 = -b - d;
-		if (t1 > 0) {
-			return new Intersection (t1, this);
-		} else if (t0 > 0) {
-			return new Intersection (t0, this);
-		}
-		return null;
-	}
-
 	public void allIntersections (IList il, Ray r) {
 		Float3 omc = r.start;
-		double b = r.dir.dot (omc);
+		Float3 dir = r.dir.normalize();
+		double b = dir.dot (omc);
 		double c = omc.dot(omc) - rad*rad;
 		if (b*b - c < 0) {
 			return;
@@ -62,10 +42,10 @@ public class  Sphere extends Node {
 		double t0 = -b + d;
 		double t1 = -b - d;
 		if (t1 > 0) {
-			il.add (new Intersection(t1, this));
+			il.add (new Intersection(t1/r.dir.mag(), this));
 		}
 		if (t0 > 0) {
-			il.add (new Intersection (t0, this));
+			il.add (new Intersection (t0/r.dir.mag(), this));
 		}
 	}
 

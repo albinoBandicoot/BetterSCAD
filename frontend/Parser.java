@@ -133,7 +133,7 @@ public class Parser {
 				}
 				next();
 			} else {
-				root.addChild (parseStatement(root));
+				root.addChild (parseStatement());
 			}
 		}
 		return root;
@@ -166,7 +166,7 @@ public class Parser {
 						} else if (peek().is ("function")) {
 							res.addChild (parseFunction());
 						} else {
-							res.addChild (parseStatement(res));
+							res.addChild (parseStatement());
 						}
 					}
 					next();	// skip the close brace
@@ -293,6 +293,47 @@ public class Parser {
 		return res;
 	}
 
+	public Tree parseVectorOrRange () throws ParseException {
+		int savepoint = i;
+		if (peek().type == Tokentype.OPEN_BRACKET) {
+			next();
+			Tree expr1 = parseExpr();
+			/* Ranges can be either [start:end] or [start:increment:end]. We store them in this order:
+			 * child 0 : start
+			 * child 1 : end
+			 * child 2 : increment
+			 */
+			if (peek().type == Tokentype.COLON) {	// range
+				Tree range = new Tree (Treetype.RANGE, peek().fm);
+				range.addChild (expr1);
+				next();
+				Tree expr2 = parseExpr();
+				if (peek().type == Tokentype.COLON) {	// then we have the 3-element form of RANGE.
+					next();
+					Tree expr3 = parseExpr();
+					range.addChild (expr3);
+					range.addChild (expr2);
+				} else {
+					range.addChild (expr2);
+					range.addChild (new Tree (Treetype.FLIT, 1.0, peek().fm));
+				}
+
+				if (peek().type == Tokentype.CLOSE_BRACKET) {
+					next();
+				} else {
+					nferror ("Expecting close bracket ] end range, found " + peek());
+				}
+				return range;
+			} else {	// vector
+				i = savepoint;
+				return parseVector();
+			}
+		} else {
+			error ("Expecting either range or vector, found " + peek());
+		}
+		return null;
+	}
+
 	public Tree parseVector () throws ParseException{
 		Tree vec = new Tree (Treetype.VECTOR, peek().fm);
 		if (peek().type == Tokentype.OPEN_BRACKET) {
@@ -358,7 +399,7 @@ public class Parser {
 		return res;
 	}
 
-	public Tree parseStatement (Tree parent) throws ParseException{	// we need the parent pointer to access the symbol tables
+	public Tree parseStatement () throws ParseException{
 		System.out.println ("In parseStatement, the leading token is " + peek());
 		if (peek().is ("module")) {
 			return parseModule();
@@ -397,7 +438,7 @@ public class Parser {
 			if (peek().type == Tokentype.OPEN_BRACE) {
 				next();
 				while (peek().type != Tokentype.CLOSE_BRACE) {
-					cond.addChild (parseStatement(res));
+					cond.addChild (parseStatement());
 				}
 				next();	// skip the close brace
 				boolean hit_else = false;
@@ -424,7 +465,7 @@ public class Parser {
 					}
 					// now we add the statements
 					while (peek().type != Tokentype.CLOSE_BRACE) {
-						cond.addChild (parseStatement(res));
+						cond.addChild (parseStatement());
 					}
 					next();
 					if (hit_else) break;
@@ -454,48 +495,13 @@ public class Parser {
 			if (peek().type == Tokentype.IDENT) {	// good
 				String name = peek().val;
 				if (next().type == Tokentype.ASSIGN) {
+					Tree assign = new Tree (Treetype.ASSIGN, name, peek().fm);
 					next();
-					// now the fun begins, since the two cases are rather tricky to disambiguate.
-					int savepoint = i;
-					if (peek().type == Tokentype.OPEN_BRACKET) {
-						next();
-						Tree expr1 = parseExpr();
-						/* Ranges can be either [start:end] or [start:increment:end]. We store them in this order:
-						 * child 0 : start
-						 * child 1 : end
-						 * child 2 : increment
-						*/
-						if (peek().type == Tokentype.COLON) {	// range
-							Tree range = new Tree (Treetype.RANGE, peek().fm);
-							range.data = name;
-							range.addChild (expr1);
-							next();
-							Tree expr2 = parseExpr();
-							if (peek().type == Tokentype.COLON) {	// then we have the 3-element form of RANGE.
-								next();
-								Tree expr3 = parseExpr();
-								range.addChild (expr3);
-								range.addChild (expr2);
-							} else {
-								range.addChild (expr2);
-								range.addChild (new Tree (Treetype.FLIT, 1.0, peek().fm));
-							}
-								
-							res.addChild (range);
-							if (peek().type == Tokentype.CLOSE_BRACKET) {
-								next();
-							} else {
-								nferror ("Expecting close bracket ] to end loop expression, found " + peek());
-							}
-						} else {	// vector
-							i = savepoint;
-							Tree vec = parseVector();
-							vec.data = name;
-							res.addChild (vec);
-						}
-					} else {
-						error ("Expecting either range or vector as loop expression, found " + peek());
-					}
+					Tree loopval = parseExpr ();
+					assign.addChild (loopval);
+					res.addChild (assign);
+
+					System.out.println ("After parsing loop index portion, the current position is " + i + " --> " + peek());
 					// now we can proceed to get the body of the loop.
 					if (peek().type == Tokentype.CLOSE_PAREN) {
 						next();
@@ -503,9 +509,12 @@ public class Parser {
 					if (peek().type == Tokentype.OPEN_BRACE) {
 						next();
 						while (peek().type != Tokentype.CLOSE_BRACE) {
-							res.addChild (parseStatement(res));
+							res.addChild (parseStatement());
+							System.out.println ("Added the following tree as a child of the for loop: " + res);
 						}
 						next();
+					} else {
+						res.addChild (parseStatement());
 					}
 				} else {
 					error ("Expecting assignment to loop variable");
@@ -553,22 +562,28 @@ public class Parser {
 			next();
 		}
 		Tree call = parseCall(Treetype.MCALL);	// these are always going to be MODULE calls
+		nesting += 1;	// the nesting will have been reset at the end of parseCall; we need to keep it incremented
+						// until all of our children have been created.
 		if (dmode != null) call.addChild (dmode);
-		System.err.println ("The token after the parseCall is " + peek());
+		System.err.println ("The token after the parseCall to module " + call.name() + " is " + peek());
 		if (peek().type == Tokentype.SEMICOLON) {
 			next();
+			nesting -= 1;
 			return call;
 		} else {
 			if (peek().type == Tokentype.OPEN_BRACE) {
 				next();
 				while (peek().type != Tokentype.CLOSE_BRACE) {
-					call.addChild (parseStatement(call));
+					System.err.println ("Getting child of module; starting at token #" + i + " --> " + peek());
+					call.addChild (parseStatement());
 				}
 				next();
 			} else {
-				call.addChild (parseStatement(call));
+				System.err.println ("Getting one child of module; starting at token #" + i + " --> " + peek());
+				call.addChild (parseStatement());
 			}
 		}
+		nesting -= 1;
 		return call;
 	}
 
@@ -685,8 +700,8 @@ public class Parser {
 				nferror ("Expecting close parenthesis, found " + peek());
 			}
 			return res;
-		} else if (peek().type == Tokentype.OPEN_BRACKET) {	// vector
-			return parseVector();
+		} else if (peek().type == Tokentype.OPEN_BRACKET) {	// vector or range
+			return parseVectorOrRange();
 		} else if (peek().type == Tokentype.BLIT) {	// boolean literal
 			Tree res = new Tree (Treetype.BLIT, peek().fm);
 			res.data = Boolean.parseBoolean (peek().val);

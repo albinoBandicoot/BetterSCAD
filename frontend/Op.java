@@ -49,7 +49,7 @@ public enum Op {
 		return this != MOD && this != DIV;
 	}
 
-	public Datum eval (Datum lhs, Datum rhs) {
+	public Datum eval (Datum lhs, Datum rhs) throws RTException {
 		if (this == NOT) {
 			return new Bool(!lhs.isTrue());
 		}
@@ -72,12 +72,15 @@ public enum Op {
 				return new Undef();
 			}
 		}
+		if (lhs instanceof Range || rhs instanceof Range) {
+			return new Undef();
+		}
 		if (this == INDEX) {
 			if (lhs instanceof Vec) {
 				if (rhs instanceof Scalar) {
 					int idx = (int) ((Scalar) rhs).d;
 					if (idx < 0 || idx >= lhs.size()) {
-						return new Undef();
+						throw new RTException ("Vector index out of bounds (index = " + idx + "; size = " + lhs.size() + ")");
 					} else {
 						return lhs.get(idx);
 					}
@@ -116,11 +119,16 @@ public enum Op {
 					return new Scalar (a-b);
 				case MUL:
 					return new Scalar (a*b);
-				case DIV:	// FIXME: check for b == 0 and do the appropriate thing. Unfortunately,
-							// this will probably involve adding another type of Datum for Inf. 
+				case DIV:	
+					if (b == 0) {
+						throw new RTException ("Division by zero");
+					}
 					return new Scalar (a/b);
 				case MOD:
-					return new Scalar (a%b);	// same deal here
+					if (b == 0) {
+						throw new RTException ("Mod by zero");
+					}
+					return new Scalar (a%b);
 				case LT:
 					return new Bool (a < b);
 				case LE:
@@ -236,7 +244,7 @@ public enum Op {
 		}
 	}
 
-	private Datum evalComponentwise (Datum lhs, Datum rhs, boolean override, boolean override_max) {	// do an operation componentwise.
+	private Datum evalComponentwise (Datum lhs, Datum rhs, boolean override, boolean override_max) throws RTException {	// do an operation componentwise.
 		int len = getLen (lhs, rhs, override, override_max);
 		Vec res = new Vec ();
 		for (int i=0; i<len; i++){ 

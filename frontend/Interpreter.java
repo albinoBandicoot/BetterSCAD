@@ -27,13 +27,14 @@ public class Interpreter {
 	}
 
 	public void error (String message, Tree t) throws RTException {
+		Thread.currentThread().dumpStack();
 		throw new RTException ("runtime ERROR at " + t.fm + ": " + message, t);
 	}
 
-	private Datum findVar (String name) throws RTException {
+	private Datum findVar (String name, Tree t) throws RTException {
 		Frame f = findVarFrame (name);
 		if (f == null) {
-			error ("Undefined variable: " + name);
+			error ("Undefined variable: " + name, t);
 			return new Undef();
 		} else {
 			return f.find (name);
@@ -87,7 +88,28 @@ public class Interpreter {
 			}
 			return v;
 		} else if (t.type == Treetype.OP) {
-			return ((Op) t.data).eval (evalExpr (t.children.get(0)), t.children.size() > 1 ? evalExpr(t.children.get(1)) : null);
+			Datum lhs = evalExpr (t.children.get(0));
+			Datum rhs = null;
+			if (t.children.size() > 1) {
+				rhs = evalExpr(t.children.get(1));
+			}
+			try {
+				return ((Op) t.data).eval (lhs, rhs);
+			} catch (RTException e) {	// catch the exception so we can call error (rethrowing the exception) with the
+				error (e.getMessage(), t); // file mark filled in
+			}
+		} else if (t.type == Treetype.RANGE) {
+			Datum dstart = evalExpr (t.children.get(0));
+			Datum dend   = evalExpr (t.children.get(1));
+			Datum dstep  = evalExpr (t.children.get(2));
+			if (!(dstart instanceof Scalar)) 	error ("Starting value for range must be a scalar", t);
+			if (!(dend instanceof Scalar))		error ("Ending value for range must be a scalar", t);
+			if (!(dstep instanceof Scalar))		error ("Step value for range must be a scalar", t);
+
+			double start = ((Scalar) dstart).d;
+			double end = ((Scalar) dend).d;
+			double step = ((Scalar) dstep).d;
+			return new Range (start, end, step);
 		} else if (t.type == Treetype.COND_OP) {
 			Datum cond = evalExpr (t.children.get(0));
 			if (cond.isTrue()) {
@@ -98,7 +120,7 @@ public class Interpreter {
 		} else if (t.type == Treetype.FCALL) {
 			return runFcall (t);
 		} else if (t.type == Treetype.IDENT) {
-			return findVar (t.name());
+			return findVar (t.name(), t);
 		} else if (t.type == Treetype.NOP) {	// this is used for the else branch of conditionals{
 			return new Bool (true);
 		} else if (t.type == Treetype.RANGE) {	// this is only here because it will get added and then deleted when the for loop is constructed. It tries to evaulate the range before deleting it, so this is here so it doesn't crash.
@@ -109,6 +131,7 @@ public class Interpreter {
 			error ("Internal error: bad tree type in evalExpr" + t.type, t);
 			return new Undef();
 		}
+		return null;
 	}
 
 	public Node run () throws RTException {
@@ -154,27 +177,27 @@ public class Interpreter {
 			return null;
 		} else if (t.type == Treetype.FOR || t.type == Treetype.INTFOR) {
 			ArrayList<Node> res = new ArrayList<Node>();
-			Tree v = t.children.get(0);
+			String lvname = t.children.get(0).name();	// loop variable name
+			Datum v = evalExpr(t.children.get(0).children.get(0));
 			createFrame (t);
-			if (v.type == Treetype.VECTOR) {
-				for (int i=0; i<v.children.size(); i++) {
-					rts.peek().put (v.name(), evalExpr (v.children.get(i)));
-					System.out.println ("\tLoop index put: '" + v.name() + "'");
+			if (v instanceof Vec) {
+				for (int i=0; i<v.size(); i++) {
+					rts.peek().put (lvname, v.get(i));
+					System.out.println ("\tLoop index put: '" + lvname + "' = " + v.get(i));
 					res.add (makeExplicit (runList (t.children, 1), CSG.UNION));
 				}
-			} else if (v.type == Treetype.RANGE){ 
-				double start = ((Scalar) evalExpr(v.children.get(0))).d;
-				double end = ((Scalar) evalExpr(v.children.get(1))).d;
-				double inc = ((Scalar) evalExpr(v.children.get(2))).d;
-				if (inc == 0 || (end-start)/inc < 0) {
+			} else if (v instanceof Range) {
+				Range r = (Range) v;
+				if (r.step == 0 || (r.end-r.start)/r.step < 0) {
 					// bad range
-					error ("Bad range", v);
+					error ("Bad range", t.children.get(0));
 					return null;
 				}
-				while (start <= end) {
-					rts.peek().put (v.name(), new Scalar (start));
+				double x = r.start;
+				while (x <= r.end) {
+					rts.peek().put (lvname, new Scalar (x));
 					res.add (makeExplicit (runList (t.children, 1), CSG.UNION));
-					start += inc;
+					x += r.step;
 				}
 			} else {
 				error ("Bad tree type for for loop statement", t);
@@ -534,17 +557,17 @@ public class Interpreter {
 				r1 = ((Scalar) dr).d;
 				r2 =r1;
 			} else {
-				if (!(dr instanceof Undef)) error ("Cylinder radius must be a scalar", mc);
+				if (!(dr instanceof Undef || dr == null)) error ("Cylinder radius must be a scalar", mc);
 			}
 			if (dr1 instanceof Scalar) {
 				r1 = ((Scalar) dr1).d;
 			} else {
-				if (!(dr1 instanceof Undef)) error ("Cylinder r1 must be a scalar", mc);
+				if (!(dr1 instanceof Undef || dr1 == null)) error ("Cylinder r1 must be a scalar", mc);
 			}
 			if (dr2 instanceof Scalar) {
 				r2 = ((Scalar) dr2).d;
 			} else {
-				if (!(dr2 instanceof Undef)) error ("Cylinder r2 must be a scalar", mc);
+				if (!(dr2 instanceof Undef || dr2 == null)) error ("Cylinder r2 must be a scalar", mc);
 			}
 			if (h instanceof Scalar) {
 				Circle c = new Circle (r1);
@@ -683,7 +706,10 @@ public class Interpreter {
 	/* Makes implicit unions or intersections between a list of nodes explicit. 
 	 * The 'type' parameter corresponds to values defined in common/CSG.java */
 	private Node makeExplicit (ArrayList<Node> nodes, int type) {
-		if (nodes.isEmpty()) return null;
+		if (nodes.isEmpty()) {
+			System.err.println ("WARNING - makeExplicit called with empty list");
+			return null;
+		}
 		if (nodes.size() == 1) return nodes.get(0);
 		CSG top = new CSG (type);
 		top.children = new Node[nodes.size()];
@@ -713,6 +739,10 @@ public class Interpreter {
 	}
 
 	public void smushTransforms (Node n) {
+		if (n == null) {
+			System.err.println ("WARNING - unexpected NULL node in smushTransforms()");
+			return;
+		}
 		if (n instanceof TransformNode) {
 			if (n.left instanceof TransformNode) {
 				smushTransforms (n.left);

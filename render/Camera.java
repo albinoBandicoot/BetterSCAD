@@ -6,11 +6,11 @@ public class  Camera {
 	public int scrx, scry;
 
 	public Camera () {
-		this (new Float3 (-10, -10, 10), new Float3 (0, 0, -1), new Float3 (0, 20, 0), 200, 200);
+		this (new Float3 (-10, -10, 100), new Float3 (0, 0, -1), new Float3 (0, 20, 0), 200, 200);
 	}
 
 	public Camera (int xs, int ys) {
-		this (new Float3 (-((double) xs)/ys * 10, -10, 10), new Float3 (0, 0, -1), new Float3 (0, 20, 0), xs, ys);
+		this (new Float3 (-((double) xs)/ys * 10, -10, 100), new Float3 (0, 0, -1), new Float3 (0, 20, 0), xs, ys);
 	}
 
 	public Camera (Float3 bl, Float3 dir, Float3 up, int scrx, int scry) {
@@ -48,7 +48,7 @@ public class  Camera {
 		Float3 proj = cam.project (pt);
 		double dx = proj.x - x;
 		double dy = proj.y - y;
-		cam.bl = cam.right.mul(-0.5).add (cam.up.mul(-0.5)).sub (cam.dir.mul(40));
+		cam.bl = cam.right.mul(-0.5).add (cam.up.mul(-0.5)).sub (cam.dir.mul(100));	// TODO: make near clipping plane dependent on camera zoom
 //		cam.bl = bl.add (cam.right.mul(dx)).add (cam.up.mul(dy));
 
 		cam.scrx = scrx;
