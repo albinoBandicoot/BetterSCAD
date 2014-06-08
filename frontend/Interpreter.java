@@ -1,5 +1,6 @@
 package frontend;
 import common.*;
+import gui.*;
 import java.util.*;
 public class Interpreter {
 
@@ -220,7 +221,26 @@ public class Interpreter {
 				}
 			}
 		} else if (t.type == Treetype.MCALL) {
-			return runMcall (t);
+			if (t.name().equals("echo")) {
+				// echo is special. We don't evaluate its children (it usually has none), and
+				// there is some trickiness in the parameters - things that look like named 
+				// parameters do not cause actual assignments to happen, but cause the name of
+				// the variable to be printed as well.
+				Tree plist = t.children.get(0);
+				StringBuffer output = new StringBuffer("ECHO: ");
+				for (Tree p : plist.children) {
+					if (p.type == Treetype.PARAM) {
+						output.append (p.name() + " = " + evalExpr (p.children.get(0)) + ", ");
+					} else {
+						output.append (evalExpr (p) + ", ");
+					}
+				}
+				output.deleteCharAt (output.length() - 2);	// delete the last comma
+				BetterSCAD.current.cons.append (output.toString());
+
+			} else {
+				return runMcall (t);
+			}
 		} else if (t.type == Treetype.ROOT) {
 			Frame b = new Frame ("Root", rts.get(0), t);
 			rts.push (b);
@@ -391,6 +411,8 @@ public class Interpreter {
 		if (fdef == null) {
 			error ("Undefined function " + fc.name(), fc);
 		}
+		STSet st = fdef.findST ();
+		boolean predef = st == null;
 		System.err.println ("Found function definition tree # " + (fdef == null ? "null" : fdef.id));
 
 		Frame b = new Frame (fc.name(), getStaticLink(fdef), fdef);
@@ -399,14 +421,32 @@ public class Interpreter {
 
 		Frame slsave = b.static_link;	// see comments in the similar portion of runMcall
 		b.static_link = oldtop;
-		populateParameters (b, fdef.children.get(0), fc.children.get(0), false);
+		if (predef) {
+			// we need to special-case this because the predefined functions completely ignore their parameters' names.
+			// So we will create a set of fake param names that are illegal OpenSCAD identifiers that are just filled in
+			// positionally from the inputs to the function.
+			Tree plist = fc.children.get(0);
+			int i = 1;
+			for (Tree param : plist.children) {
+				if (param.type == Treetype.PARAM) {	// named. We discard the given name.
+					b.put ("@" + i, evalExpr (param.children.get(0)));
+				} else {
+					b.put ("@" + i, evalExpr (param));
+				}
+				i++;
+			}
+
+		} else {
+			populateParameters (b, fdef.children.get(0), fc.children.get(0), false);
+		}
 		b.static_link = slsave;
 
-		STSet st = fdef.findST();
+		System.err.println ("Stack after function " + fc.name() + "'s parameters have been loaded is: ");
+		printStack();
 
 		Datum res;
-		if (st.parent == null) {	// function in the runtimes
-			res = runPredefFunc (fdef);
+		if (predef) {	// function in the runtimes
+			res = runPredefFunc (fdef, fc);
 		} else {
 			res = evalExpr (fdef.children.get(1));
 		}
@@ -414,13 +454,213 @@ public class Interpreter {
 		return res;
 	}
 
-	private Datum runPredefFunc (Tree fdef) {
+	private Datum runPredefFunc (Tree fdef, Tree fc) throws RTException {
 		String n = fdef.name();
-		if (n.equals ("sqrt")) {
+		Frame top = rts.peek();
+		if (n.equals ("len")) {
+			Datum d = top.find ("@1");
+			if (d instanceof Vec || d instanceof Str) {
+				return new Scalar (d.size());
+			} else {
+				error ("Can only take lengths of vectors and strings.", fc);
+			}
+		} else if (n.equals ("cross")) {
+			Datum v1 = top.find ("@1");
+			Datum v2 = top.find ("@2");
+			if (v1 instanceof Vec && v2 instanceof Vec) {
+				if (v1.size() == 3 && v2.size() == 3) {
+					return new Vec (((Vec) v1).getFloat3().cross (((Vec) v2).getFloat3()));
+				} else {
+					error ("Cross product only defined for 3-dimensional vectors.", fc);
+				}
+			} else {
+				error ("Cross product takes two vector parameters.", fc);
+			}
+		} else if (n.equals ("norm")) {
+			Datum v = top.find ("@1");
+			if (v instanceof Vec) {
+				double res = 0;
+				for (int i = 0; i < v.size(); i++) {
+					Datum e = v.get(i);
+					if (e instanceof Scalar) {
+						double x = ((Scalar) e).d;
+						res += x*x;
+					} else {
+						error ("All entries in vector must be scalars in order to compute norm", fc);
+					}
+				}
+				return new Scalar (Math.sqrt(res));
+			} else {
+				error ("norm can only be applied to vectors", fc);
+			}
+		} else if (n.equals ("rands")) {
+			Datum dmin = top.find ("@1");
+			Datum dmax = top.find ("@2");
+			Datum dnvals = top.find ("@3");
+			Datum dseed = top.find ("@4");
+			double min = 0;
+			double max = 0;
+			int nvals = 0;
+			int seed = 0;
+			boolean use_seed = false;
+			if (dmin instanceof Scalar) {
+				min = ((Scalar) dmin).d;
+			} else {
+				error ("minimum value for rands must be a scalar", fc);
+			}
+			if (dmax instanceof Scalar) {
+				max = ((Scalar) dmax).d;
+			} else {
+				error ("maximum value for rands must be a scalar", fc);
+			}
+			if (dnvals instanceof Scalar) {
+				nvals = (int) ((Scalar) dnvals).d;
+			} else {
+				error ("#values for rands must be a scalar", fc);
+			}
+			if (dseed == null) {
+				use_seed =false;
+			} else if (dseed instanceof Scalar) {
+				use_seed = true;
+				seed = (int) ((Scalar) dseed).d;
+			} else {
+				error ("Seed value for rands must be a scalar", fc);
+			}
+			Random rand;
+			if (use_seed) {
+				rand = new Random (seed);
+			} else {
+				rand = new Random();
+			}
+			Vec res = new Vec ();
+			for (int i=0; i<nvals; i++) {
+				res.vals.add (new Scalar (rand.nextDouble() * (max - min) + min));
+			}
+			return res;
+		} else if (n.equals ("str")) {
+			StringBuffer sb = new StringBuffer();
+			Datum d = top.find ("@1");
+			int i = 1;
+			while (d != null) {
+				sb.append (d);
+				i++;
+				d = top.find ("@" + i);
+			}
+			return new Str (sb.toString());
 		}
-			
+				
 
-		// TODO: Implement me!
+		if (n.equals ("min") || n.equals ("max")) {
+			boolean min = n.equals("min");
+			double result = min ? 1e20 : -1e20;
+			Datum d = top.find ("@1");
+			if (d instanceof Vec) {
+				Vec v = (Vec) d;
+				for (int i = 0; i < v.size(); i++) {
+					Datum vi = v.get(i);
+					if (vi instanceof Scalar) {
+						double x = ((Scalar) vi).d;
+						if (min) {
+							result = Math.min (result, x);
+						} else {
+							result = Math.max (result, x);
+						}
+					} else {
+						error ("Found non-scalar element of vector in call to " + n, fc);
+					}
+				}
+			} else if (d instanceof Scalar) {
+				int i = 2;
+				while (d != null && d instanceof Scalar) {
+					if (min) {
+						result = Math.min (result, ((Scalar) d).d);
+					} else {
+						result = Math.max (result, ((Scalar) d).d);
+					}
+					d = top.find ("@" + i);
+					i++;
+				}
+				if (d != null) {
+					error ("Expecting scalars as parameters to " + n, fc);
+				}
+			} else {
+				error ("Expecting either a series of scalars or a vector as parameters to " + n, fc);
+			}
+		}
+
+		if (fdef.idata == 1) {
+			Datum d = top.find ("@1");
+			double x = 0;
+			if (d instanceof Scalar) {
+				x = ((Scalar) d).d;
+			} else {
+				error ("Expecting single scalar parameter for function " + n, fc);
+			}
+			if (n.equals ("sqrt")) {
+				if (x >= 0) {
+					return new Scalar (Math.sqrt(x));
+				} else {
+					error ("Square root of " + x + " is complex!", fc);
+				}
+			} else if (n.equals ("cos")) {
+				return new Scalar (Math.cos(x * 180 / Math.PI));
+			} else if (n.equals ("sin")) {
+				return new Scalar (Math.sin (x * 180 / Math.PI));
+			} else if (n.equals ("tan")) {
+				return new Scalar (Math.tan (x * 180 / Math.PI));
+			} else if (n.equals ("acos")) {
+				if (x >= -1 && x <= 1) {
+					return new Scalar (Math.acos (x) * 180/Math.PI);
+				} else {
+					error ("acos of " + x + " does not exist", fc);
+				}
+			} else if (n.equals ("asin")) {
+				if (x >= -1 && x <= 1) {
+					return new Scalar (Math.asin (x) * 180/Math.PI);
+				} else {
+					error ("asin of " + x + " does not exist", fc);
+				}
+			} else if (n.equals ("atan")) {
+				return new Scalar (Math.atan (x) * 180/Math.PI);
+			} else if (n.equals ("abs")) {
+				return new Scalar (Math.abs(x));
+			} else if (n.equals ("ceil")) {
+				return new Scalar (Math.ceil (x));
+			} else if (n.equals ("floor")) {
+				return new Scalar (Math.floor(x));
+			} else if (n.equals ("round")) {
+				return new Scalar (Math.round (x));
+			} else if (n.equals ("exp")) {
+				return new Scalar (Math.exp (x));
+			} else if (n.equals ("log")) {
+				return new Scalar (Math.log10 (x));
+			} else if (n.equals ("ln")) {
+				return new Scalar (Math.log (x));
+			} else if (n.equals ("sign")) {
+				return new Scalar (Math.signum (x));
+			}
+		} else if (fdef.idata == 2) {
+			Datum a = top.find ("@1");
+			Datum b = top.find ("@2");
+			double x = 0;
+			double y = 0;
+			if (a instanceof Scalar) {
+				x = ((Scalar) a).d;
+			} else {
+				error ("Function " + n + " expects two scalar arguments", fc);
+			}
+			if (b instanceof Scalar) {
+				y = ((Scalar) b).d;
+			} else {
+				error ("Function " + n + " expects two scalar arguments", fc);
+			}
+			if (n.equals ("pow")) {
+				return new Scalar (Math.pow (x,y));
+			} else if (n.equals ("atan2")) {
+				return new Scalar (Math.atan2 (x,y));
+			}
+		}
+
 		return new Undef();
 	}
 /*
@@ -648,7 +888,18 @@ public class Interpreter {
 
 			} else if (ad instanceof Scalar) {	// angle around axis v
 				if (vd instanceof Vec) {
-					TransformNode tn = new TransformNode (Transform.makeRotate (((Vec) vd).getFloat3(), ((Scalar) ad).d));
+					TransformNode tn;
+					if (((Vec) vd).isZeroVec()) {	// OpenSCAD takes this to mean rotation about Z-axis.
+						tn = new TransformNode (Transform.makeRotate (new Float3(0,0,1), ((Scalar) ad).d));
+					} else {
+						tn = new TransformNode (Transform.makeRotate (((Vec) vd).getFloat3(), ((Scalar) ad).d));
+					}
+					tn.left = makeExplicit (children, CSG.UNION);
+					return tn;
+				} else if (vd instanceof Undef) {
+					// then we have rotation about z-axis.
+					Transform z = Transform.makeRotate (new Float3(0,0,1), ((Scalar) ad).d);
+					TransformNode tn = new TransformNode (z);
 					tn.left = makeExplicit (children, CSG.UNION);
 					return tn;
 				} else {
@@ -679,13 +930,20 @@ public class Interpreter {
 			return tn;
 		} else if (n.equals ("color")) {
 			Datum col = top.find ("c");
+			Float3 color = Prefs.current.DEFAULT_OBJ_COLOR;
 			if (col instanceof Vec) {
-				Node c = makeExplicit (children, CSG.UNION);
-				c.mat = new Material (((Vec) col).getFloat3());
-				return c;
+				color = ((Vec) col).getFloat3();
+			} else if (col instanceof Str) {
+				color = NamedColor.getColorByName (col.toString());
+				if (color == null) {
+					error ("Unknown color name " + col, mc);
+				}
 			} else {
-				error ("Expecting an rgb vector in color module invocation", mc);
+				error ("Expecting an rgb vector or named color", mc);
 			}
+			Node c = makeExplicit (children, CSG.UNION);
+			c.mat = new Material (color);
+			return c;
 		} else {
 			error ("Unsupported or erroneous module: " + n, mc);
 		}

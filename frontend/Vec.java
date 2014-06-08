@@ -28,6 +28,10 @@ public class Vec extends Datum {
 		vals.add (r3);
 	}
 
+	public Vec (Float3 p) {
+		this(p.x, p.y, p.z);
+	}
+
 	public int size () {
 		return vals.size();
 	}
@@ -35,6 +39,14 @@ public class Vec extends Datum {
 	public boolean isFlat () {
 		for (Datum d : vals) {
 			if (! (d instanceof Scalar)) return false;
+		}
+		return true;
+	}
+
+	public boolean isZeroVec () {
+		for (Datum d : vals) {
+			if (!(d instanceof Scalar)) return false;
+			if (((Scalar) d).d != 0) return false;
 		}
 		return true;
 	}

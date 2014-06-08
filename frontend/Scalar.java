@@ -26,6 +26,9 @@ public class Scalar extends Datum {
 	}
 
 	public String toString () {
+		if (d == (int) d) {
+			return Integer.toString ((int) d);
+		}
 		return Float.toString ((float) d);
 	}
 }

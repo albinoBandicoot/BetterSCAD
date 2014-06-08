@@ -26,6 +26,7 @@ public class Semantics {
 		String[][] mparam = {{}, {}, {}, {}, {"size", "center"}, {"r"}, {"points", "paths", "convexity"}, {"size", "center"}, {"h", "r", "r2", "center"}, {"r"}, {"height", "center", "convexity", "twist", "slices", "scale"}, {"convexity"}, {"v"}, {"v"}, {"a", "v"}, {"v"}, {"m"}, {"c", "alpha"}};
 		Datum[][] mdefaults = {{}, {}, {}, {}, {new Scalar(1), new Bool(false)}, {new Scalar(1)}, {new Undef(), new Undef(), new Scalar(5)}, {new Scalar(1), new Bool(false)}, {new Scalar(1), new Scalar(1), new Scalar(1), new Bool(false)}, {new Scalar(1)}, {new Scalar(1), new Scalar(0), new Scalar(5), new Scalar(0), new Undef(), new Scalar(1)}, {new Scalar(5)}, {new Vec(0,0,0)}, {new Vec(1,1,1)}, {new Vec(0,0,0), new Undef()}, {new Vec(1,0,0)}, {new Vec(new Vec(1,0,0), new Vec(0,1,0), new Vec(0,0,1))}, {new Vec(0.8, 0.8, 0), new Scalar(1)}};
 		String[] functions = {"cos", "sin", "tan", "acos", "asin", "atan", "atan2", "abs", "ceil", "exp", "floor", "ln", "len", "log", "lookup", "max", "min", "norm", "pow", "rands", "round", "sign", "sqrt", "str"};
+		int[] argcounts = {1,1,1,1,1,1,2,1,1,1,1,1,1,1,999 /*idk*/,2,2,1,2,1,3,1,1,1,0};
 
 		for (int i=0; i<modules.length; i++) {
 			Tree mdef = createModuleTree (mparam[i], mdefaults[i]);
@@ -35,8 +36,10 @@ public class Semantics {
 			runtimes.modules.put (modules[i], mdef);
 		}
 
-		for (String f : functions) {
-			runtimes.functions.put (f, null);
+		for (int i=0; i<functions.length; i++) {
+			Tree fdef = new Tree (Treetype.FUNCTION, functions[i], new FileMark(0,0,0));
+			fdef.idata = argcounts[i];
+			runtimes.functions.put (functions[i], fdef);
 		}
 
 		runtimes.vars.put ("true", new Tree (Treetype.BLIT, true, new FileMark (0,0,0)));

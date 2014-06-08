@@ -11,6 +11,7 @@ public class Tree {
 	public int id;
 	public int nest_depth;	// for module and function definitions.
 	public FileMark fm;
+	public int idata;	// arbitrary piece of integer data. Currently only used for predefined functions' argument counts.
 
 	private static int num = 0;
 
