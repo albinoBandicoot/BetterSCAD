@@ -31,23 +31,28 @@ public class Interpreter {
 	}
 
 	private Datum findVar (String name) throws RTException {
-		if (name.charAt(0) == '$') {	// special variables just search the stack directly upwards (dynamic scope)
-			for (int i = rts.size()-1; i>=0; i--) {
-				Datum d = rts.get(i).find (name);
-				if (d != null) return d;
-			}
+		Frame f = findVarFrame (name);
+		if (f == null) {
 			error ("Undefined variable: " + name);
 			return new Undef();
-		} else {	// follow the chain of static links until null or the variable is found
+		} else {
+			return f.find (name);
+		}
+	}
+
+	public Frame findVarFrame (String name) {
+		if (name.charAt(0) == '$') {
+			for (int i = rts.size()-1; i>=0; i--) {
+				if (rts.get(i).find(name) != null) return rts.get(i);
+			}
+		} else {
 			Frame f = rts.peek();
 			while (f != null) {
-				Datum d = f.find (name);
-				if (d != null) return d;
+				if (f.find(name) != null) return f;
 				f = f.static_link;
 			}
-			error ("Undefined variable: " + name);
-			return new Undef();
 		}
+		return null;
 	}
 
 	public Frame getStaticLink (Tree t) {
@@ -177,10 +182,19 @@ public class Interpreter {
 			rts.pop();
 			return makeExplicit (res, t.type == Treetype.FOR ? CSG.UNION : CSG.INTERSECTION);
 
-		} else if (t.type == Treetype.ASSIGN) {
+		} else if (t.type == Treetype.ASSIGN || t.type == Treetype.DECLARE) {
 			/* This should only be run if we're doing runtime assignment. */
 			if (Prefs.current.RUNTIME_VARS) {
-				rts.peek().put (t.name(), evalExpr (t.children.get(0)));
+				if (t.type == Treetype.DECLARE) {
+					rts.peek().put (t.name(), evalExpr (t.children.get(0)));
+				} else {
+					Frame f = findVarFrame (t.name());
+					if (f == null) {	// not found -> create local
+						rts.peek().put (t.name(), evalExpr (t.children.get(0)));
+					} else {
+						f.put (t.name(), evalExpr (t.children.get(0)));
+					}
+				}
 			}
 		} else if (t.type == Treetype.MCALL) {
 			return runMcall (t);
@@ -216,7 +230,7 @@ public class Interpreter {
 		return ch;
 	}
 
-	/* Creates a smallframe for the tree t and pushes it onto the top of the top bigframe's stack. 
+	/* Creates a frame for the tree t and pushes it onto the stack. 
 	 * t should have a static symbol table associated with it. 
 	 *
 	 * If RUNTIME_VARS is true, these symbols are entered into the table but initialized to undef
@@ -232,7 +246,7 @@ public class Interpreter {
 		System.out.println ("Loading frame " + f.id + " with vars from tree " + t.id);
 		if (Prefs.current.RUNTIME_VARS) {
 			for (String vname : t.st.vars.entries.keySet()) {
-				f.put (vname, new Undef());
+		//		f.put (vname, new Undef());	// I don't think I want to do this!
 			}
 		} else {
 			for (ListMap.Entry e : t.st.vars.entries.entrySet ()) {
@@ -304,7 +318,10 @@ public class Interpreter {
 			error ("Undefined module " + mc.name(), mc);
 		}
 
+		createFrame (mc);
+		rts.peek().name = rts.peek().name + "_ch";
 		ArrayList<Node> children = runList (mc.children, 1);	// don't run the parameters list (0th child)
+		rts.pop();
 
 		System.out.println ("Finished running children of " + mc.name() + "(" + mc.id + ")");
 
@@ -459,6 +476,28 @@ public class Interpreter {
 			return null;
 
 		} else if (n.equals ("square")) {
+			Datum size = top.find ("size");
+			Datum cent = top.find ("center");
+			double xs = 0;
+			double ys = 0;
+			if (size instanceof Scalar) {
+				xs = ((Scalar) size).d;
+				ys = xs;
+			} else if (size instanceof Vec) {
+				Float3 s = ((Vec) size).getFloat3();
+				xs = s.x;
+				ys = s.y;
+			} else {
+				error ("Square size must be either a scalar or a vector", mc);
+			}
+			Rectangle rect = new Rectangle (xs, ys);
+			if (cent.isTrue ()) {
+				TransformNode c = new TransformNode (Transform.makeTranslate (new Float3 (xs/2, ys/2, 0)));
+				c.left = rect;
+				return c;
+			}
+			return rect;
+
 		} else if (n.equals ("cube")) {		// linear extrude a square
 			Datum size = top.find ("size");
 			Datum cent = top.find ("center");
@@ -640,6 +679,7 @@ public class Interpreter {
 		return res;
 	}
 
+
 	/* Makes implicit unions or intersections between a list of nodes explicit. 
 	 * The 'type' parameter corresponds to values defined in common/CSG.java */
 	private Node makeExplicit (ArrayList<Node> nodes, int type) {
@@ -649,20 +689,6 @@ public class Interpreter {
 		top.children = new Node[nodes.size()];
 		top.children = nodes.toArray(top.children);
 		return top;
-		/*
-		CSG c = top;
-		int i = 0;
-		while (i < nodes.size() - 2) {
-			c.left = nodes.get(i);
-			CSG n = new CSG (type);
-			c.right = n;
-			c = n;
-			i++;
-		}
-		c.left = nodes.get(i);
-		c.right = nodes.get(i+1);
-		return top;
-		*/
 	}
 
 	/* Does a very similar thing to makeExplicit, except it injects a copy of 'op'
@@ -684,27 +710,6 @@ public class Interpreter {
 			i++;
 		}
 		return top;
-
-		/*
-		CSG c = top;
-		int i = 0;
-		while (i < nodes.size() - 2) {
-			Node copy_op = op.copy();
-			copy_op.left = nodes.get(i);
-			c.left = copy_op;
-			CSG n = new CSG (type);
-			c.right = n;
-			c = n;
-			i++;
-		}
-		Node op1 = op.copy();
-		Node op2 = op.copy();
-		op1.left = nodes.get(i);
-		op2.left = nodes.get(i+1);
-		c.left = op1;
-		c.right = op2;
-		return top;
-		*/
 	}
 
 	public void smushTransforms (Node n) {

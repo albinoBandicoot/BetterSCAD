@@ -48,6 +48,10 @@ public class Parser {
 		throw new ParseException ("Parser ERROR in line " + tokens.get(i).fm + "(token " + i + "): " + message, tokens.get(i).fm);
 	}
 
+	public void error (String message, FileMark fm) throws ParseException{
+		throw new ParseException ("Parser ERROR in line " + fm + ": " + message, fm);
+	}
+
 	public void nferror (String message) {
 		// TODO: append this to the current console
 		System.err.println ("Parser nonfatal ERROR in line " + tokens.get(i).fm + "(token " + i + "): " + message);
@@ -226,6 +230,7 @@ public class Parser {
 		 * The children are either just expressions (for positional parameters), or are PARAM nodes, which have the var name as data and the expr as a child.
 		*/
 
+		nesting += 1;
 		Tree res = new Tree (calltype, peek().fm);
 		res.nest_depth = nesting;
 		if (peek().type == Tokentype.IDENT) {
@@ -265,6 +270,26 @@ public class Parser {
 		} else {
 			error ("Expecting identifier to begin function call");
 		}
+
+		/* Convert assign blocks into unions with assignment statements (actually declares) inside them. */
+		if (calltype == Treetype.MCALL) {
+			if (res.name().equals("assign")) {
+				res.data = "union";
+				Tree plist = res.children.get(0);
+				res.children.remove(0);	// remove the plist and just leave the body.
+				for (int i=0; i<plist.children.size(); i++) {
+					Tree param = plist.children.get(i);
+					if (param.type != Treetype.PARAM) {	// that is, it was given positionally
+						error ("Positional parameters not allowed in assign blocks", param.fm);
+					}
+					Tree as = new Tree (Treetype.DECLARE, param.name(), param.fm);
+					as.nest_depth = res.nest_depth;
+					as.addChild (param.children.get(0));
+					res.children.add(0, as);
+				}
+			}
+		}
+		nesting -= 1;
 		return res;
 	}
 
@@ -339,6 +364,27 @@ public class Parser {
 			return parseModule();
 		} else if (peek().is("function")) {
 			return parseFunction();
+		} else if (peek().is("declare")) {
+			Tree res = new Tree (Treetype.DECLARE, peek().fm);
+			next();
+			if (peek().type == Tokentype.IDENT) {
+				res.data = peek().val;
+				if (next().type == Tokentype.ASSIGN) {
+					next();
+					res.addChild (parseExpr());
+					if (peek().type == Tokentype.SEMICOLON) {
+						next();
+					} else {
+						nferror ("Missing semicolon");
+					}
+					return res;
+				} else {
+					error ("Expecting assignment after identifier in declaration", peek().fm);
+				}
+			} else {
+				error ("Expecting identifier after keyword 'declare'", res.fm);
+			}
+
 		} else if (peek().is ("if")) {
 			/* An if statement's children must all be CONDITION nodes. A CONDITION tree will have as its first 
 			 * child the condition, and subsequent children are the body. Else branches get null first children. */

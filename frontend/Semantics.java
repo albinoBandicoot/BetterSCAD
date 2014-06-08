@@ -92,7 +92,7 @@ public class Semantics {
 
 	private static void fillST (Tree t) throws SemanticException {
 		System.out.println ("Will fill symbol table for tree of type " + t.type);
-		if (t.type == Treetype.ASSIGN) {
+		if (t.type == Treetype.ASSIGN || t.type == Treetype.DECLARE) {
 			t.findPST().vars.put (t.name(), t.children.get(0));
 			return;
 		}

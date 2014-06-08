@@ -7,7 +7,7 @@ public class Prefs {
 	public static final int PREDEFS = 1;
 	public static final int NONE = 0;
 
-	public boolean 	RUNTIME_VARS = false;
+	public boolean 	RUNTIME_VARS = true;
 	public boolean 	VECLEN_MAX = false;
 	public int 		PROTECT_FROM_UNDEF = PREDEFS;	// whether to overwrite default for a parameter if undef is passed in
 	public int 		STACK_HEIGHT_CAP = 50;
