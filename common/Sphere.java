@@ -42,10 +42,10 @@ public class  Sphere extends Node {
 		double t0 = -b + d;
 		double t1 = -b - d;
 		if (t1 > 0) {
-			il.add (new Intersection(t1/r.dir.mag(), this));
+			il.add (new Intersection(t1/r.dir.mag(), this, 0));
 		}
 		if (t0 > 0) {
-			il.add (new Intersection (t0/r.dir.mag(), this));
+			il.add (new Intersection (t0/r.dir.mag(), this, 0));
 		}
 	}
 

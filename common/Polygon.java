@@ -57,7 +57,7 @@ public class  Polygon extends Node2D {
 				}
 				if (s >= 0 && s <= 1) {
 					ict++;
-					il.add (new Intersection (t, this));
+					il.add (new Intersection (t, this, -1));
 				}
 			}
 		}

@@ -61,64 +61,14 @@ public class  Extrude extends Node {
 		Intersection topi = Intersection.build (r, h, this);
 		Intersection boti = Intersection.build (r, 0, this);
 		if (topi != null && onSurface (r.get(topi.t))) {
+			topi.facet = -1;
 			il.add (topi);
 		}
 		if (boti != null && onSurface (r.get(boti.t))) {
+			boti.facet = -2;
 			il.add (boti);
 		}
 	}
-
-
-	/* First find the intersection points with the infinite cylinder. Find the min and max z values, then
-	 * remove anything outside [0..h]. Depending on the min and max vals, intersections with the caps may
-	 * be added. */
-	/*
-	public ArrayList<Intersection> allIntersections (Ray r) {
-		ArrayList<Intersection> icyl = ((Node2D) left).allContourIntersections (r);
-		double minz = 1e50;
-		double maxz = -1e50;
-		double minzt, maxzt;
-		boolean vertical = new Float3 (r.dir.x, r.dir.y, 0).mag() < 1e-6;
-		if (!vertical) {
-			for (int i=0; i<icyl.size(); i++) {
-				double z = r.get (icyl.get(i).t).z;
-				if (z < minz) {
-					minz = z;
-					minzt = icyl.get(i).t;
-				}
-				if (z > maxz) {
-					maxz = z;
-					maxzt = icyl.get(i).t;
-				}
-				System.out.print ("z = " + z);
-				if (z < 0 || z > h) {
-					System.out.println("; removing");
-					icyl.remove (i);
-					i--;
-				} else {
-					System.out.println("; not removing");
-				}
-
-			}
-		}
-		System.out.print ("ICYL before caps = " + icyl.size() + "   ");
-		// if minz > 0, we can eliminate the bottom cap test, and if maxz < h, we can eliminate the top cap test.
-		if (vertical || minz <= 0) {	// we need the bottom cap intersection
-			Intersection bot = Intersection.build (r, 0, this);
-			if (bot != Intersection.NONE && left.csg (r.get(bot.t)) < 0) {
-				icyl.add (bot);
-			}
-		}
-		if (vertical || maxz >= h) {	// we need the top cap intersection
-			Intersection top = Intersection.build (r, h, this);
-			if (top != Intersection.NONE && left.csg (r.get(top.t)) < 0) {
-				icyl.add (top);
-			}
-		}
-		System.out.println ("ICYL len = " + icyl.size());
-		return icyl;
-	}
-	*/
 
 	public String getString () {
 		return "Extrude h = " + h;

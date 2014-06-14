@@ -73,7 +73,7 @@ public class  SimplePolygon extends Node2D {
 					}
 					if (s >= 0 && s <= 1) {
 						ict++;
-						il.add (new Intersection (t/dmag, this));
+						il.add (new Intersection (t/dmag, this, i));
 					}
 				}
 			}

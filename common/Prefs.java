@@ -13,17 +13,17 @@ public class Prefs {
 	public int 		STACK_HEIGHT_CAP = 50;
 
 	/* GUI OPTIONS */
-	public double	PHI_SCALE = -50.0;
-	public double	THETA_SCALE = 36.0;
+	public double	PHI_SCALE = -110.0;
+	public double	THETA_SCALE = 110.0;
 	public double	SCALE_BASE = 1.18;	// multiplier for zooming, per wheel click
 	public Float3	DEFAULT_OBJ_COLOR = new Float3 (1.0, 1.0, 1.0);
 
 	public Font		EDITOR_FONT = new Font ("Courier", Font.PLAIN, 13);
-	public int		EDITOR_TAB_SIZE = 6;
+	public int		EDITOR_TAB_SIZE = 5;
 
 	/* RENDERING OPTIONS */
 	public Float3	AMBIENT = new Float3 (0.3, 0.3, 0.3);
-	public int		DOWNSAMPLING = 3;
+	public int		DOWNSAMPLING = 2;
 
 	public static Prefs current = new Prefs();
 

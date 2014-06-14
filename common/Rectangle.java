@@ -56,7 +56,7 @@ public class  Rectangle extends Node2D {
 		double t = r.solveX (x);
 		double y = r.get(t).y;
 		if (y >= 0 && y <= ys) {
-			return new Intersection (t, this, true);
+			return new Intersection (t, this, x==0? 0 : 2);
 		}
 		return null;
 	}
@@ -65,7 +65,7 @@ public class  Rectangle extends Node2D {
 		double t = r.solveY (y);
 		double x = r.get(t).x;
 		if (x >= 0 && x <= xs) {
-			return new Intersection (t, this, true);
+			return new Intersection (t, this, y==0 ? 1 : 3);
 		}
 		return null;
 	}

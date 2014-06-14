@@ -124,8 +124,6 @@ public class Interpreter {
 			return findVar (t.name(), t);
 		} else if (t.type == Treetype.NOP) {	// this is used for the else branch of conditionals{
 			return new Bool (true);
-		} else if (t.type == Treetype.RANGE) {	// this is only here because it will get added and then deleted when the for loop is constructed. It tries to evaulate the range before deleting it, so this is here so it doesn't crash.
-			return new Undef();
 		} else {
 			System.err.println ("Uh oh, bad tree type in evalExpr: " + t);
 			Thread.currentThread().dumpStack();

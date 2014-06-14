@@ -14,7 +14,7 @@ public class  Raytrace {
 		int norm_csgct = 0;
 		s.il.csg_ct = 0;
 
-		Node[][] objs = new Node[ys][xs];
+		Intersection[][] objs = new Intersection[ys][xs];
 
 		for (int x=0; x<xs; x++) {
 			for (int y=0; y<ys; y++) {
@@ -25,6 +25,7 @@ public class  Raytrace {
 				if (i == Intersection.NONE) {
 					// background
 					data[loc] = bkgr;
+					objs[y][x] = Intersection.NONE;
 				} else {
 					// get the normal. This is just the gradient of the csg function, since
 					// the normal to a level set is the gradient of the function.
@@ -44,7 +45,7 @@ public class  Raytrace {
 					Float3 col = i.obj.mat.col.mul (light);
 
 					data[loc] = col.clamp().getImgRGB();
-					objs[y][x] = i.obj;
+					objs[y][x] = i;
 				}
 			}
 		}
@@ -52,8 +53,8 @@ public class  Raytrace {
 		for (int x=1; x<xs-1; x++) {
 			for (int y=1; y<ys-1; y++) {
 				int loc = y*xs + x;
-				Node n = objs[y][x];
-				if (n != objs[y-1][x] || n != objs[y+1][x] || n != objs[y][x-1] || n != objs[y][x+1]) {
+				Intersection n = objs[y][x];
+				if ( !n.sameFacet (objs[y-1][x]) || !n.sameFacet (objs[y+1][x]) || !n.sameFacet (objs[y][x-1]) || !n.sameFacet (objs[y][x+1])) {
 					data[loc] = 0;
 				}
 			}

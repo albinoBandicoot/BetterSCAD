@@ -52,36 +52,10 @@ public class  Circle extends Node2D {
 		double msq = lsq - s*s;
 		if (msq > rad*rad) return 0;
 		double q = Math.sqrt (rad*rad - msq);
-		il.add (new Intersection ((s-q) / dmag, this, true));
-		il.add (new Intersection ((s+q) / dmag, this, true));
+		il.add (new Intersection ((s-q) / dmag, this, 0));
+		il.add (new Intersection ((s+q) / dmag, this, 0));
 		return 2;
 	}
-
-	/*
-	public ArrayList<Intersection> allContourIntersections (Ray r) {
-		ArrayList<Intersection> ipts = new ArrayList<Intersection>();
-		Float3 omc = new Float3 (r.start.x, r.start.y, 0).normalize();
-		Float3 dir = new Float3 (r.dir.x, r.dir.y, 0).normalize();
-		if (dir.mag() < 1e-6) { 
-			return ipts;	// empty
-		}
-		double b = dir.dot (omc);
-		double c = omc.dot(omc) - rad*rad;
-		if (b*b - c < 0) {
-			return ipts;
-		}
-		double d = Math.sqrt (b*b-c);
-		double t0 = -b + d;
-		double t1 = -b - d;
-		if (t1 > 0) {
-			ipts.add (new Intersection (t1, this));
-		}
-		if (t0 > 0) {
-			ipts.add (new Intersection (t0, this));
-		}
-		return ipts;
-	}
-	*/
 
 	public String getString () {
 		return "Circle, r = " + rad;

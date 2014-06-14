@@ -80,6 +80,9 @@ public class STSet {
 				}
 				*/
 
+				/* This is a little complicated now that we aren't storing the parameters in the 
+				 * module definition's symbol table. For now, let's just return true. The interpreter
+				 * will figure it out if it's undefined. 
 				Tree plist = t.children.get(0);
 				for (Tree param : plist.children) {
 					if (param.type == Treetype.PARAM) {
@@ -88,6 +91,7 @@ public class STSet {
 						if (!depsOK (param)) return false;
 					}
 				}
+				*/
 				return true;
 			} else if (t.type == Treetype.VECTOR) {
 				for (Tree e : t.children) {
