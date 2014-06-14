@@ -198,8 +198,13 @@ public class Interpreter {
 					res.add (makeExplicit (runList (t.children, 1), CSG.UNION));
 					x += r.step;
 				}
+			} else if (v instanceof Undef) {
+				error ("Loop index variable is undefined");
 			} else {
-				error ("Bad tree type for for loop statement", t);
+				// it's some type of scalar/string/boolean; just add it to the environment as a local and evaluate
+				// the body once.
+				rts.peek().put (lvname, v);
+				res.add (makeExplicit (runList (t.children, 1), CSG.UNION));
 			}
 			rts.pop();
 			return makeExplicit (res, t.type == Treetype.FOR ? CSG.UNION : CSG.INTERSECTION);
@@ -704,7 +709,7 @@ public class Interpreter {
 				System.err.println ("GOOD: Returning new sphere");
 				return new Sphere (((Scalar) r).d);
 			} else {
-				System.err.println ("ERROR: non-scalar sphere radius");
+				error ("Non-scalar sphere radius");
 			}
 			return null;
 

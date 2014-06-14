@@ -483,8 +483,10 @@ public class Parser {
 			 * 		This tree has the variable name as its data.
 			 * Subsequent children: statements of the body
 			*/
+			int nesting_save = nesting;
 			nesting += 1;
 			Tree res = new Tree (peek().is("for") ? Treetype.FOR : Treetype.INTFOR, peek().fm);
+			Tree innermost = res;
 			res.nest_depth = nesting;
 			next();
 			if (peek().type == Tokentype.OPEN_PAREN) {
@@ -492,16 +494,25 @@ public class Parser {
 			} else {
 				nferror ("Expecting open parenthesis after loop keyword, found " + peek());
 			}
-			if (peek().type == Tokentype.IDENT) {	// good
+			while (peek().type == Tokentype.IDENT) {	// good
 				String name = peek().val;
 				if (next().type == Tokentype.ASSIGN) {
 					Tree assign = new Tree (Treetype.ASSIGN, name, peek().fm);
 					next();
 					Tree loopval = parseExpr ();
 					assign.addChild (loopval);
-					res.addChild (assign);
+					innermost.addChild (assign);
 
 					System.out.println ("After parsing loop index portion, the current position is " + i + " --> " + peek());
+					if (peek().type == Tokentype.COMMA) {	// then we have the nested loop shorthand
+						Tree prev_inner = innermost;
+						nesting ++;
+						innermost = new Tree (res.type, peek().fm);
+						innermost.nest_depth = nesting;
+						prev_inner.addChild (innermost);	// this is the body of prev_inner.
+						next();	// skip over the comma
+						continue;	// go back to the top of the while
+					}
 					// now we can proceed to get the body of the loop.
 					if (peek().type == Tokentype.CLOSE_PAREN) {
 						next();
@@ -509,18 +520,18 @@ public class Parser {
 					if (peek().type == Tokentype.OPEN_BRACE) {
 						next();
 						while (peek().type != Tokentype.CLOSE_BRACE) {
-							res.addChild (parseStatement());
+							innermost.addChild (parseStatement());
 							System.out.println ("Added the following tree as a child of the for loop: " + res);
 						}
 						next();
+						break;
 					} else {
-						res.addChild (parseStatement());
+						innermost.addChild (parseStatement());
+						break;
 					}
 				} else {
 					error ("Expecting assignment to loop variable");
 				}
-			} else {
-				error ("Loop expressions must be of the form <variable> = [start : end]  or  <variable> = <vector>");
 			}
 			/* One option to make for loops more uniform is to replace the vector form with an equivalent range form:
 			 *
@@ -530,7 +541,7 @@ public class Parser {
 			 * 	assign (x = a[__TEMP]) {
 			*/ 
 
-			nesting -= 1;
+			nesting = nesting_save;
 			return res;
 		}
 
